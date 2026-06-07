@@ -15,6 +15,7 @@ const ABI = [
   "function tasksRemaining(uint256) view returns (uint256)",
   "event JobCreated(uint256 indexed jobId, address indexed client, address indexed agent, uint256 ratePerTask, uint256 deposit, string spec)",
   "event TaskCompleted(uint256 indexed jobId, address indexed agent, uint256 taskIndex, uint256 payout, bytes32 workHash, string summary)",
+  "event JobFunded(uint256 indexed jobId, address indexed funder, uint256 amount)",
 ];
 
 let failures = 0;
@@ -43,15 +44,22 @@ async function main() {
   check("job0 is active", job.active === true);
   check("job0 has completed tasks", job.tasksCompleted > 0n, `tasksCompleted=${job.tasksCompleted}`);
 
-  // accounting invariant: deposit = balance + payouts
+  // accounting invariant: deposit + top-ups = balance + payouts
   const created = await escrow.queryFilter(escrow.filters.JobCreated(0), DEPLOY_BLOCK, "latest");
   const completed = await escrow.queryFilter(escrow.filters.TaskCompleted(0), DEPLOY_BLOCK, "latest");
+  const funded = await escrow.queryFilter(escrow.filters.JobFunded(0), DEPLOY_BLOCK, "latest");
+  check("JobCreated event found for job 0", created.length === 1);
+  if (created.length === 0) {
+    console.log("\nABORT: no JobCreated event — wrong DEPLOY_BLOCK?");
+    process.exit(1);
+  }
   const deposit = created[0].args.deposit;
+  const topUps = funded.reduce((s, e) => s + e.args.amount, 0n);
   const paidOut = completed.reduce((s, e) => s + e.args.payout, 0n);
   check(
-    "accounting invariant: deposit == balance + total payouts",
-    deposit === job.balance + paidOut,
-    `${ethers.formatEther(deposit)} == ${ethers.formatEther(job.balance)} + ${ethers.formatEther(paidOut)}`
+    "accounting invariant: deposit + top-ups == balance + total payouts",
+    deposit + topUps === job.balance + paidOut,
+    `${ethers.formatEther(deposit + topUps)} == ${ethers.formatEther(job.balance)} + ${ethers.formatEther(paidOut)}`
   );
   check(
     "event count matches tasksCompleted",

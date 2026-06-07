@@ -34,8 +34,11 @@ async function getChainSnapshot(provider) {
     provider.getFeeData(),
     provider.getNetwork(),
   ]);
-  const prevBlock = await provider.getBlock(block.number - 100);
-  const blockTime = (block.timestamp - prevBlock.timestamp) / 100;
+  const lookback = Math.min(100, block.number);
+  const prevBlock = await provider.getBlock(block.number - lookback);
+  const blockTime = prevBlock
+    ? (block.timestamp - prevBlock.timestamp) / Math.max(lookback, 1)
+    : 0;
   return {
     chainId: Number(network.chainId),
     blockNumber: block.number,
@@ -80,7 +83,8 @@ async function askLLM(snapshot, taskIndex) {
 
 async function main() {
   const jobId = process.argv[2];
-  const intervalSec = Number(process.argv[3] ?? 30);
+  let intervalSec = Number(process.argv[3] ?? 30);
+  if (!Number.isFinite(intervalSec) || intervalSec <= 0) intervalSec = 30;
   if (jobId === undefined) {
     console.error("Usage: node agent/agent.js <jobId> [intervalSeconds]");
     process.exit(1);
@@ -101,40 +105,58 @@ async function main() {
   console.log(`🤖 ChainAnalyst online — agent wallet ${wallet.address}`);
   console.log(`   Job #${jobId} on escrow ${process.env.ESCROW_ADDRESS}\n`);
 
-  // keep running until the escrow runs dry — the agent works for as long as it's paid
+  // keep running until the escrow runs dry — the agent works for as long as
+  // it's paid, and shrugs off transient RPC/LLM failures instead of dying
+  let consecutiveFailures = 0;
   for (;;) {
-    const remaining = await escrow.tasksRemaining(jobId);
-    if (remaining === 0n) {
-      console.log("💤 Escrow exhausted or job closed — agent stops working. Top up to resume.");
-      break;
+    try {
+      const done = await runOneTask(provider, escrow, jobId, outDir);
+      consecutiveFailures = 0;
+      if (done) break;
+    } catch (err) {
+      consecutiveFailures++;
+      const backoff = Math.min(intervalSec * 2 ** consecutiveFailures, 300);
+      console.error(`⚠️  Task attempt failed (${err.message?.slice(0, 140)}) — retry in ${backoff}s (failure ${consecutiveFailures})`);
+      await new Promise((r) => setTimeout(r, backoff * 1000));
+      continue;
     }
-
-    const job = await escrow.jobs(jobId);
-    const taskIndex = Number(job.tasksCompleted) + 1;
-    console.log(`📊 Task #${taskIndex} — gathering live chain data...`);
-    const snapshot = await getChainSnapshot(provider);
-
-    console.log(`🧠 Asking the LLM (${MODEL}) for the analyst report...`);
-    const report = await askLLM(snapshot, taskIndex);
-    const workHash = ethers.keccak256(ethers.toUtf8Bytes(report));
-
-    const summary = `LiteForge health report #${taskIndex} @ block ${snapshot.blockNumber}`;
-    console.log(`⛓️  Submitting completeTask (workHash ${workHash.slice(0, 18)}…)...`);
-    const tx = await escrow.completeTask(jobId, workHash, summary);
-    const receipt = await tx.wait();
-
-    const outFile = path.join(outDir, `report-${taskIndex}.md`);
-    fs.writeFileSync(
-      outFile,
-      `# ${summary}\n\n- tx: https://liteforge.explorer.caldera.xyz/tx/${receipt.hash}\n- workHash: ${workHash}\n\n${report}\n`
-    );
-
-    const balance = await provider.getBalance(wallet.address);
-    console.log(`✅ Paid ${ethers.formatEther(job.ratePerTask)} zkLTC — tx ${receipt.hash}`);
-    console.log(`💰 Agent balance: ${ethers.formatEther(balance)} zkLTC | report saved: ${outFile}\n`);
-
     await new Promise((r) => setTimeout(r, intervalSec * 1000));
   }
+}
+
+/** Runs one work-and-get-paid cycle. Returns true when the job is done. */
+async function runOneTask(provider, escrow, jobId, outDir) {
+  const remaining = await escrow.tasksRemaining(jobId);
+  if (remaining === 0n) {
+    console.log("💤 Escrow exhausted or job closed — agent stops working. Top up to resume.");
+    return true;
+  }
+
+  const job = await escrow.jobs(jobId);
+  const taskIndex = Number(job.tasksCompleted) + 1;
+  console.log(`📊 Task #${taskIndex} — gathering live chain data...`);
+  const snapshot = await getChainSnapshot(provider);
+
+  console.log(`🧠 Asking the LLM (${MODEL}) for the analyst report...`);
+  const report = await askLLM(snapshot, taskIndex);
+  const workHash = ethers.keccak256(ethers.toUtf8Bytes(report));
+
+  const summary = `LiteForge health report #${taskIndex} @ block ${snapshot.blockNumber}`;
+  console.log(`⛓️  Submitting completeTask (workHash ${workHash.slice(0, 18)}…)...`);
+  const tx = await escrow.completeTask(jobId, workHash, summary);
+  const receipt = await tx.wait();
+
+  const outFile = path.join(outDir, `report-${taskIndex}.md`);
+  fs.writeFileSync(
+    outFile,
+    `# ${summary}\n\n- tx: https://liteforge.explorer.caldera.xyz/tx/${receipt.hash}\n- workHash: ${workHash}\n\n${report}\n`
+  );
+
+  const agentAddress = await escrow.runner.getAddress();
+  const balance = await provider.getBalance(agentAddress);
+  console.log(`✅ Paid ${ethers.formatEther(job.ratePerTask)} zkLTC — tx ${receipt.hash}`);
+  console.log(`💰 Agent balance: ${ethers.formatEther(balance)} zkLTC | report saved: ${outFile}\n`);
+  return false;
 }
 
 main().catch((err) => {

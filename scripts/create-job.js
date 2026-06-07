@@ -34,6 +34,7 @@ async function main() {
   const ev = receipt.logs
     .map((l) => { try { return escrow.interface.parseLog(l); } catch { return null; } })
     .find((e) => e && e.name === "JobCreated");
+  if (!ev) throw new Error(`JobCreated event not found in receipt ${receipt.hash}`);
   console.log(`✅ Job #${ev.args.jobId} created — tx ${receipt.hash}`);
   console.log(`Run the agent: node agent/agent.js ${ev.args.jobId}`);
 }

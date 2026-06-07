@@ -83,6 +83,11 @@ export default function App() {
           readProvider
             .getBlock(blockNumber)
             .then((b) => (b ? Number(b.timestamp) : null))
+            .catch(() => {
+              // don't poison the cache with a rejected promise — retry next time
+              cache.delete(blockNumber);
+              return null;
+            })
         );
       }
       return cache.get(blockNumber);
@@ -136,7 +141,10 @@ export default function App() {
       await Promise.all([refreshJobs(), loadFeed()]);
       if (alive) setLoading(false);
     })();
-    const t = setInterval(refreshJobs, 15000);
+    const t = setInterval(() => {
+      refreshJobs();
+      loadFeed(); // also retry/backfill the feed — a single failed load shouldn't blank it forever
+    }, 15000);
     return () => {
       alive = false;
       clearInterval(t);
@@ -195,7 +203,10 @@ export default function App() {
         params: [{ chainId: CHAIN.idHex }],
       });
     } catch (switchErr) {
-      // 4902: unknown chain -> add it, then switch
+      // only add the chain when it's actually unknown (4902) — don't re-prompt
+      // a user who just rejected the switch (4001)
+      const code = switchErr?.code ?? switchErr?.error?.code;
+      if (code !== 4902) throw switchErr;
       await eth.request({
         method: "wallet_addEthereumChain",
         params: [

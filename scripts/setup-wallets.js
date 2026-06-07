@@ -21,9 +21,13 @@ async function main() {
     const agent = ethers.Wallet.createRandom();
     const envPath = path.join(__dirname, "..", ".env");
     const env = fs.readFileSync(envPath, "utf8");
+    // tolerate CRLF/trailing whitespace; append the line if it's missing entirely
+    const updated = env.replace(/^AGENT_PRIVATE_KEY=[ \t]*$/m, `AGENT_PRIVATE_KEY=${agent.privateKey}`);
     fs.writeFileSync(
       envPath,
-      env.replace(/^AGENT_PRIVATE_KEY=$/m, `AGENT_PRIVATE_KEY=${agent.privateKey}`)
+      updated.includes(agent.privateKey)
+        ? updated
+        : `${env}\nAGENT_PRIVATE_KEY=${agent.privateKey}\n`
     );
     console.log(`Agent   : ${agent.address} (new wallet written to .env)`);
   } else {

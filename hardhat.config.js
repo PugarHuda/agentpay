@@ -16,4 +16,19 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
+  // Contract verification on the LiteForge Blockscout explorer
+  etherscan: {
+    apiKey: { liteforge: "blockscout" },
+    customChains: [
+      {
+        network: "liteforge",
+        chainId: 4441,
+        urls: {
+          apiURL: "https://liteforge.explorer.caldera.xyz/api",
+          browserURL: "https://liteforge.explorer.caldera.xyz",
+        },
+      },
+    ],
+  },
+  sourcify: { enabled: false },
 };
