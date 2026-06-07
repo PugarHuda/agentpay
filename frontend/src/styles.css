@@ -163,6 +163,52 @@ a:hover {
   }
 }
 
+/* nav tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  border: var(--border);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+.tab {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 13.5px;
+  padding: 8px 16px;
+  color: var(--ink);
+  border-right: var(--border-2);
+}
+.tab:last-child {
+  border-right: none;
+}
+.tab:hover {
+  text-decoration: none;
+  background: var(--paper-2);
+}
+.tab.active {
+  background: var(--lime);
+}
+@media (max-width: 880px) {
+  /* tabs drop to their own full-width row under the brand */
+  .nav-inner {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 12px 0;
+    gap: 12px;
+  }
+  .tabs {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
 .chain-pill {
   display: inline-flex;
   align-items: center;
@@ -726,6 +772,39 @@ textarea:disabled {
 .view-link:hover {
   text-decoration: none;
   background: var(--lime);
+}
+
+/* ===================== sub-pages (hire / jobs / activity) ===================== */
+.page {
+  padding-top: 28px;
+  padding-bottom: 56px;
+}
+.page-title {
+  font-family: var(--display);
+  font-size: clamp(28px, 4vw, 40px);
+  margin: 0 0 22px;
+  letter-spacing: -0.02em;
+}
+.page-narrow {
+  max-width: 620px;
+}
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.quick-actions .btn {
+  text-align: center;
+}
+.jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (max-width: 720px) {
+  .jobs-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ===================== job detail page ===================== */

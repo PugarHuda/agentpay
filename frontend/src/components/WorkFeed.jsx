@@ -44,12 +44,13 @@ function Entry({ entry }) {
   );
 }
 
-export default function WorkFeed({ feed, loading }) {
+export default function WorkFeed({ feed, loading, limit, moreHref }) {
+  const shown = limit ? feed.slice(0, limit) : feed;
   return (
     <section className="card panel stream">
       <div className="phead">
         <h2 className="ptitle">
-          <span className="dot" /> Live Earnings Stream
+          <span className="dot" /> {limit ? "Latest Earnings" : "Live Earnings Stream"}
         </h2>
         <span className="count">{feed.length}</span>
       </div>
@@ -66,11 +67,18 @@ export default function WorkFeed({ feed, loading }) {
           delivers work and gets paid.
         </div>
       ) : (
-        <ul className="stream-list">
-          {feed.map((entry) => (
-            <Entry key={entry.key} entry={entry} />
-          ))}
-        </ul>
+        <>
+          <ul className="stream-list">
+            {shown.map((entry) => (
+              <Entry key={entry.key} entry={entry} />
+            ))}
+          </ul>
+          {moreHref && feed.length > shown.length && (
+            <a className="btn btn-ghost btn-block" href={moreHref} style={{ marginTop: 14 }}>
+              View all {feed.length} →
+            </a>
+          )}
+        </>
       )}
     </section>
   );

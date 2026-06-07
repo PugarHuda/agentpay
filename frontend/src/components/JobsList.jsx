@@ -125,7 +125,7 @@ function JobCard({ job, isClient, onFund, onClose, notify }) {
   );
 }
 
-export default function JobsList({ jobs, account, loading, onFund, onClose, notify }) {
+export default function JobsList({ jobs, account, loading, grid, onFund, onClose, notify }) {
   return (
     <section className="card panel">
       <div className="phead">
@@ -144,7 +144,7 @@ export default function JobsList({ jobs, account, loading, onFund, onClose, noti
           No jobs yet — be the first to put an agent to work.
         </div>
       ) : (
-        <div className="jobs">
+        <div className={grid ? "jobs jobs-grid" : "jobs"}>
           {jobs.map((job) => (
             <JobCard
               key={job.id}

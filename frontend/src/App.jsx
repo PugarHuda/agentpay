@@ -12,10 +12,15 @@ import WorkFeed from "./components/WorkFeed.jsx";
 import Footer from "./components/Footer.jsx";
 import JobDetail from "./components/JobDetail.jsx";
 
-// tiny hash router: "#/job/3" -> { name: "job", id: 3 }, else dashboard
+// tiny hash router
 function parseRoute() {
-  const m = (window.location.hash || "").match(/^#\/job\/(\d+)/);
-  return m ? { name: "job", id: Number(m[1]) } : { name: "home" };
+  const h = window.location.hash || "";
+  const job = h.match(/^#\/job\/(\d+)/);
+  if (job) return { name: "job", id: Number(job[1]) };
+  if (h.startsWith("#/hire")) return { name: "hire" };
+  if (h.startsWith("#/jobs")) return { name: "jobs" };
+  if (h.startsWith("#/activity")) return { name: "activity" };
+  return { name: "dashboard" };
 }
 
 export default function App() {
@@ -325,7 +330,7 @@ export default function App() {
   return (
     <div className="app">
       <div className="bg-fx" />
-      <Nav account={account} balance={balance} onConnect={connect} />
+      <Nav account={account} balance={balance} onConnect={connect} route={route.name} />
 
       {!ESCROW_ADDRESS && (
         <div className="banner">
@@ -337,7 +342,7 @@ export default function App() {
 
       {toast && <div className={`toast ${toast.kind}`}>{toast.text}</div>}
 
-      {route.name === "job" ? (
+      {route.name === "job" && (
         <JobDetail
           job={jobs.find((j) => j.id === route.id) || null}
           entries={feed.filter((e) => e.jobId === route.id)}
@@ -346,7 +351,9 @@ export default function App() {
           onClose={closeJob}
           notify={notify}
         />
-      ) : (
+      )}
+
+      {route.name === "dashboard" && (
         <main className="container">
           <Hero
             account={account}
@@ -354,7 +361,6 @@ export default function App() {
             totalTasks={totalTasks}
             onConnect={connect}
           />
-
           <Stats
             totalPaid={fmt(totalPaid)}
             totalTasks={totalTasks}
@@ -362,28 +368,65 @@ export default function App() {
             activeJobs={activeJobs}
             loading={loading}
           />
-
           <div className="grid">
             <div className="col">
-              <HireForm
-                disabled={!ESCROW_ADDRESS}
-                account={account}
-                onConnect={connect}
-                onCreate={createJob}
-              />
-              <JobsList
-                jobs={jobs}
-                account={account}
-                loading={loading}
-                onFund={fundJob}
-                onClose={closeJob}
-                notify={notify}
-              />
+              <section className="card panel">
+                <div className="phead">
+                  <h2 className="ptitle">⚡ Quick actions</h2>
+                </div>
+                <p className="psub">Jump straight to what you want to do.</p>
+                <div className="quick-actions">
+                  <a className="btn btn-primary" href="#/hire">Hire an Agent →</a>
+                  <a className="btn btn-ghost" href="#/jobs">Browse Jobs →</a>
+                  <a className="btn btn-ghost" href="#/activity">Live Activity →</a>
+                </div>
+              </section>
             </div>
             <div className="col">
-              <WorkFeed feed={feed} loading={loading} />
+              <WorkFeed
+                feed={feed}
+                loading={loading}
+                limit={3}
+                moreHref="#/activity"
+              />
             </div>
           </div>
+        </main>
+      )}
+
+      {route.name === "hire" && (
+        <main className="container page">
+          <h1 className="page-title">🪄 Hire an Agent</h1>
+          <div className="page-narrow">
+            <HireForm
+              disabled={!ESCROW_ADDRESS}
+              account={account}
+              onConnect={connect}
+              onCreate={createJob}
+            />
+          </div>
+        </main>
+      )}
+
+      {route.name === "jobs" && (
+        <main className="container page">
+          <h1 className="page-title">💼 Jobs</h1>
+          <JobsList
+            jobs={jobs}
+            account={account}
+            loading={loading}
+            grid
+            onFund={fundJob}
+            onClose={closeJob}
+            notify={notify}
+          />
+        </main>
+      )}
+
+      {route.name === "activity" && (
+        <main className="container page">
+          <h1 className="page-title">📡 Live Activity</h1>
+          <WorkFeed feed={feed} loading={loading} />
         </main>
       )}
 
