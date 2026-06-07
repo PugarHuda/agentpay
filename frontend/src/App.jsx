@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ethers } from "ethers";
 import { CHAIN, ESCROW_ADDRESS, DEPLOY_BLOCK } from "./config.js";
 import { ESCROW_ABI } from "./abi.js";
-import { errMsg, fmt } from "./lib.js";
-import Header from "./components/Header.jsx";
-import StatsRow from "./components/StatsRow.jsx";
+import { errMsg, fmt, short } from "./lib.js";
+import Nav from "./components/Nav.jsx";
+import Hero from "./components/Hero.jsx";
+import Stats from "./components/Stats.jsx";
 import HireForm from "./components/HireForm.jsx";
 import JobsList from "./components/JobsList.jsx";
 import WorkFeed from "./components/WorkFeed.jsx";
@@ -35,7 +36,7 @@ export default function App() {
   const [jobs, setJobs] = useState([]);
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(Boolean(contract));
-  const [toast, setToast] = useState(null); // { kind: "error" | "ok", text }
+  const [toast, setToast] = useState(null); // { kind: "err" | "ok", text }
   const blockTimeCache = useRef(new Map());
 
   const notify = useCallback((kind, text) => {
@@ -84,7 +85,6 @@ export default function App() {
             .getBlock(blockNumber)
             .then((b) => (b ? Number(b.timestamp) : null))
             .catch(() => {
-              // don't poison the cache with a rejected promise — retry next time
               cache.delete(blockNumber);
               return null;
             })
@@ -143,7 +143,7 @@ export default function App() {
     })();
     const t = setInterval(() => {
       refreshJobs();
-      loadFeed(); // also retry/backfill the feed — a single failed load shouldn't blank it forever
+      loadFeed();
     }, 15000);
     return () => {
       alive = false;
@@ -155,7 +155,7 @@ export default function App() {
   useEffect(() => {
     if (!contract) return;
     const handler = async (...args) => {
-      const event = args[args.length - 1]; // ContractEventPayload
+      const event = args[args.length - 1];
       try {
         const entry = await logToEntry(event.log, true);
         if (!entry.timestamp) entry.timestamp = Math.floor(Date.now() / 1000);
@@ -179,8 +179,7 @@ export default function App() {
   const refreshBalance = useCallback(
     async (addr) => {
       try {
-        const b = await readProvider.getBalance(addr);
-        setBalance(b);
+        setBalance(await readProvider.getBalance(addr));
       } catch {
         /* RPC hiccup — keep last value */
       }
@@ -203,8 +202,6 @@ export default function App() {
         params: [{ chainId: CHAIN.idHex }],
       });
     } catch (switchErr) {
-      // only add the chain when it's actually unknown (4902) — don't re-prompt
-      // a user who just rejected the switch (4001)
       const code = switchErr?.code ?? switchErr?.error?.code;
       if (code !== 4902) throw switchErr;
       await eth.request({
@@ -224,7 +221,7 @@ export default function App() {
 
   const connect = useCallback(async () => {
     if (!window.ethereum) {
-      notify("error", "MetaMask not detected — install it to hire agents.");
+      notify("err", "MetaMask not detected — install it to hire agents.");
       return;
     }
     try {
@@ -236,11 +233,10 @@ export default function App() {
       setAccount(addr);
       refreshBalance(addr);
     } catch (e) {
-      notify("error", errMsg(e));
+      notify("err", errMsg(e));
     }
   }, [ensureChain, notify, refreshBalance]);
 
-  // react to wallet account / chain changes
   useEffect(() => {
     const eth = window.ethereum;
     if (!eth || !eth.on) return;
@@ -301,6 +297,7 @@ export default function App() {
 
   // ---- derived stats ----
   const totalJobs = jobs.length;
+  const activeJobs = useMemo(() => jobs.filter((j) => j.active).length, [jobs]);
   const totalTasks = feed.length;
   const totalPaid = useMemo(
     () => feed.reduce((acc, e) => acc + e.payout, 0n),
@@ -309,33 +306,37 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header
-        account={account}
-        balance={balance}
-        onConnect={connect}
-      />
+      <div className="bg-fx" />
+      <Nav account={account} balance={balance} onConnect={connect} />
 
       {!ESCROW_ADDRESS && (
         <div className="banner">
-          <span className="banner-dot" />
-          Contract not deployed yet — set{" "}
-          <code>VITE_ESCROW_ADDRESS</code> in <code>frontend/.env</code> and
-          restart the dev server. The dashboard will light up automatically.
+          <span className="dot" style={{ background: "var(--amber)" }} />
+          Contract not deployed yet — set <code>VITE_ESCROW_ADDRESS</code> in{" "}
+          <code>frontend/.env</code>. The dashboard lights up automatically.
         </div>
       )}
 
-      {toast && <div className={`toast toast-${toast.kind}`}>{toast.text}</div>}
+      {toast && <div className={`toast ${toast.kind}`}>{toast.text}</div>}
 
       <main className="container">
-        <StatsRow
-          totalJobs={totalJobs}
-          totalTasks={totalTasks}
+        <Hero
+          account={account}
           totalPaid={fmt(totalPaid)}
+          totalTasks={totalTasks}
+          onConnect={connect}
+        />
+
+        <Stats
+          totalPaid={fmt(totalPaid)}
+          totalTasks={totalTasks}
+          totalJobs={totalJobs}
+          activeJobs={activeJobs}
           loading={loading}
         />
 
-        <div className="columns">
-          <div className="col-left">
+        <div className="grid">
+          <div className="col">
             <HireForm
               disabled={!ESCROW_ADDRESS}
               account={account}
@@ -351,7 +352,7 @@ export default function App() {
               notify={notify}
             />
           </div>
-          <div className="col-right">
+          <div className="col">
             <WorkFeed feed={feed} loading={loading} />
           </div>
         </div>

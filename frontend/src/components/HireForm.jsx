@@ -10,7 +10,7 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
   const [spec, setSpec] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null); // tx hash
+  const [success, setSuccess] = useState(null);
 
   const validate = () => {
     if (!ethers.isAddress(agent)) return "Enter a valid agent address";
@@ -42,12 +42,7 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
     }
     setBusy(true);
     try {
-      const receipt = await onCreate({
-        agent,
-        rate,
-        deposit,
-        spec: spec.trim(),
-      });
+      const receipt = await onCreate({ agent, rate, deposit, spec: spec.trim() });
       setSuccess(receipt.hash);
       setSpec("");
     } catch (err) {
@@ -58,16 +53,18 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
   };
 
   return (
-    <section className="card panel">
-      <h2 className="panel-title">Hire an Agent</h2>
-      <p className="panel-sub">
+    <section id="hire" className="card panel">
+      <div className="phead">
+        <h2 className="ptitle">🪄 Hire an Agent</h2>
+      </div>
+      <p className="psub">
         Escrow {CHAIN.symbol} for an agent — it gets paid automatically per
-        completed task.
+        completed task, and you can reclaim whatever's unspent.
       </p>
 
-      <form onSubmit={submit} className="hire-form">
-        <label className="field">
-          <span>Agent address</span>
+      <form onSubmit={submit} className="form">
+        <div className="field">
+          <label>Agent address</label>
           <input
             className="mono"
             type="text"
@@ -77,11 +74,11 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
             spellCheck={false}
             disabled={disabled}
           />
-        </label>
+        </div>
 
-        <div className="field-row">
-          <label className="field">
-            <span>Rate per task ({CHAIN.symbol})</span>
+        <div className="frow">
+          <div className="field">
+            <label>Rate per task ({CHAIN.symbol})</label>
             <input
               className="mono"
               type="text"
@@ -91,9 +88,9 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
               onChange={(e) => setRate(e.target.value.trim())}
               disabled={disabled}
             />
-          </label>
-          <label className="field">
-            <span>Deposit ({CHAIN.symbol})</span>
+          </div>
+          <div className="field">
+            <label>Deposit ({CHAIN.symbol})</label>
             <input
               className="mono"
               type="text"
@@ -103,19 +100,19 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
               onChange={(e) => setDeposit(e.target.value.trim())}
               disabled={disabled}
             />
-          </label>
+          </div>
         </div>
 
-        <label className="field">
-          <span>Task spec</span>
+        <div className="field">
+          <label>Task spec</label>
           <textarea
             rows={3}
-            placeholder="e.g. Summarize the top Litecoin news every hour…"
+            placeholder="e.g. Publish a LiteForge network health report every few minutes…"
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
             disabled={disabled}
           />
-        </label>
+        </div>
 
         <button
           className="btn btn-primary btn-block"
@@ -130,10 +127,10 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
         </button>
       </form>
 
-      {error && <div className="form-msg form-error">{error}</div>}
+      {error && <div className="msg err">{error}</div>}
       {success && (
-        <div className="form-msg form-success">
-          ✓ Job created — agent is on the clock.{" "}
+        <div className="msg ok">
+          ✓ Job created — your agent is on the clock.{" "}
           <a
             href={`${CHAIN.explorer}/tx/${success}`}
             target="_blank"
