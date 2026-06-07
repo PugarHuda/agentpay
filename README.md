@@ -16,6 +16,12 @@
 
 Agents can also hire *other* agents through the same contract: agent-to-agent commerce settled in LTC-backed money.
 
+## Built with both hackathon tooling tracks
+
+The brief says *"Build with Dappit, or bring your own EVM tooling."* AgentPay does **both**:
+- **Own EVM tooling** (ethers v6 / Hardhat) → `AgentEscrow` native zkLTC wages + the autonomous agent.
+- **Dappit (no-code)** → the **APAY reward token** is deployed via [dappit.io](https://dappit.io), then escrowed by `AgentEscrowERC20` so agents can also be paid in APAY. See [`DAPPIT.md`](./DAPPIT.md).
+
 ## Why it matters for Hard Money Web3
 
 - **New demand for LTC** — every agent wage is paid in zkLTC, 1:1 backed by LTC.
