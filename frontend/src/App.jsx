@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ethers } from "ethers";
-import { CHAIN, ESCROW_ADDRESS } from "./config.js";
+import { CHAIN, ESCROW_ADDRESS, DEPLOY_BLOCK } from "./config.js";
 import { ESCROW_ABI } from "./abi.js";
 import { errMsg, fmt } from "./lib.js";
 import Header from "./components/Header.jsx";
@@ -115,7 +115,7 @@ export default function App() {
     try {
       const logs = await contract.queryFilter(
         contract.filters.TaskCompleted(),
-        0,
+        DEPLOY_BLOCK,
         "latest"
       );
       const entries = await Promise.all(logs.map((l) => logToEntry(l, false)));

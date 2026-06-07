@@ -11,3 +11,7 @@ export const CHAIN = {
 
 // Set after deployment: VITE_ESCROW_ADDRESS in frontend/.env
 export const ESCROW_ADDRESS = import.meta.env.VITE_ESCROW_ADDRESS || "";
+
+// Scanning logs from genesis times out on the public RPC (16.7M+ blocks),
+// so event queries start at the contract's deployment block.
+export const DEPLOY_BLOCK = Number(import.meta.env.VITE_DEPLOY_BLOCK || 16703976);
