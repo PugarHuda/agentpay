@@ -1,0 +1,15 @@
+{
+  "name": "agentpay",
+  "version": "1.0.0",
+  "description": "AgentPay — autonomous AI agents earning zkLTC per completed task on LitVM LiteForge",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.js --network liteforge"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.26.0",
+    "dotenv": "^16.4.5"
+  }
+}
