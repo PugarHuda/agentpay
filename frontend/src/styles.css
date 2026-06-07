@@ -691,6 +691,129 @@ textarea:disabled {
   min-width: 130px;
 }
 
+.job-top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.view-link {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  background: var(--white);
+  border: var(--border-2);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.view-link:hover {
+  text-decoration: none;
+  background: var(--lime);
+}
+
+/* ===================== job detail page ===================== */
+.detail-back {
+  padding: 24px 0 4px;
+}
+.detail-head {
+  margin-top: 8px;
+}
+.detail-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.detail-id {
+  font-family: var(--display);
+  font-size: 34px;
+  margin: 0;
+  line-height: 1;
+}
+.detail-spec {
+  font-size: 14.5px;
+  font-weight: 500;
+  margin: 0 0 20px;
+}
+.detail-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+@media (max-width: 640px) {
+  .detail-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.dstat {
+  padding: 14px;
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.dstat.lime {
+  background: var(--lime);
+}
+.dstat.blue {
+  background: var(--blue);
+}
+.dstat.pink {
+  background: var(--pink);
+}
+.dstat.yellow {
+  background: var(--yellow);
+}
+.dstat .k {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.dstat .v {
+  font-family: var(--display);
+  font-size: 24px;
+  line-height: 1;
+  margin-top: 6px;
+}
+.dstat .v .u {
+  font-size: 12px;
+  font-family: var(--mono);
+}
+.detail-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding-top: 16px;
+  border-top: var(--border-2);
+}
+@media (max-width: 560px) {
+  .detail-meta {
+    grid-template-columns: 1fr;
+  }
+}
+.detail-meta .vv {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+}
+.earn-chart {
+  width: 100%;
+  height: auto;
+  border: var(--border-2);
+  background: var(--paper);
+  display: block;
+}
+.earn-bar {
+  fill: var(--lime);
+  stroke: var(--ink);
+  stroke-width: 2.5;
+}
+.earn-x {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--ink);
+}
+
 /* ===================== live earnings stream ===================== */
 .stream {
   position: sticky;

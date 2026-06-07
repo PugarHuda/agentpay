@@ -10,6 +10,13 @@ import HireForm from "./components/HireForm.jsx";
 import JobsList from "./components/JobsList.jsx";
 import WorkFeed from "./components/WorkFeed.jsx";
 import Footer from "./components/Footer.jsx";
+import JobDetail from "./components/JobDetail.jsx";
+
+// tiny hash router: "#/job/3" -> { name: "job", id: 3 }, else dashboard
+function parseRoute() {
+  const m = (window.location.hash || "").match(/^#\/job\/(\d+)/);
+  return m ? { name: "job", id: Number(m[1]) } : { name: "home" };
+}
 
 export default function App() {
   // ---- read-only provider: dashboard works without a wallet ----
@@ -37,7 +44,18 @@ export default function App() {
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(Boolean(contract));
   const [toast, setToast] = useState(null); // { kind: "err" | "ok", text }
+  const [route, setRoute] = useState(parseRoute());
   const blockTimeCache = useRef(new Map());
+
+  // hash routing
+  useEffect(() => {
+    const onHash = () => {
+      setRoute(parseRoute());
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   const notify = useCallback((kind, text) => {
     setToast({ kind, text });
@@ -319,44 +337,55 @@ export default function App() {
 
       {toast && <div className={`toast ${toast.kind}`}>{toast.text}</div>}
 
-      <main className="container">
-        <Hero
+      {route.name === "job" ? (
+        <JobDetail
+          job={jobs.find((j) => j.id === route.id) || null}
+          entries={feed.filter((e) => e.jobId === route.id)}
           account={account}
-          totalPaid={fmt(totalPaid)}
-          totalTasks={totalTasks}
-          onConnect={connect}
+          onFund={fundJob}
+          onClose={closeJob}
+          notify={notify}
         />
+      ) : (
+        <main className="container">
+          <Hero
+            account={account}
+            totalPaid={fmt(totalPaid)}
+            totalTasks={totalTasks}
+            onConnect={connect}
+          />
 
-        <Stats
-          totalPaid={fmt(totalPaid)}
-          totalTasks={totalTasks}
-          totalJobs={totalJobs}
-          activeJobs={activeJobs}
-          loading={loading}
-        />
+          <Stats
+            totalPaid={fmt(totalPaid)}
+            totalTasks={totalTasks}
+            totalJobs={totalJobs}
+            activeJobs={activeJobs}
+            loading={loading}
+          />
 
-        <div className="grid">
-          <div className="col">
-            <HireForm
-              disabled={!ESCROW_ADDRESS}
-              account={account}
-              onConnect={connect}
-              onCreate={createJob}
-            />
-            <JobsList
-              jobs={jobs}
-              account={account}
-              loading={loading}
-              onFund={fundJob}
-              onClose={closeJob}
-              notify={notify}
-            />
+          <div className="grid">
+            <div className="col">
+              <HireForm
+                disabled={!ESCROW_ADDRESS}
+                account={account}
+                onConnect={connect}
+                onCreate={createJob}
+              />
+              <JobsList
+                jobs={jobs}
+                account={account}
+                loading={loading}
+                onFund={fundJob}
+                onClose={closeJob}
+                notify={notify}
+              />
+            </div>
+            <div className="col">
+              <WorkFeed feed={feed} loading={loading} />
+            </div>
           </div>
-          <div className="col">
-            <WorkFeed feed={feed} loading={loading} />
-          </div>
-        </div>
-      </main>
+        </main>
+      )}
 
       <Footer />
     </div>

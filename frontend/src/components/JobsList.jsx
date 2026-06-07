@@ -56,9 +56,14 @@ function JobCard({ job, isClient, onFund, onClose, notify }) {
     <article className={`job${job.active ? "" : " closed"}`}>
       <div className="job-top">
         <span className="job-id">Job #{job.id}</span>
-        <span className={`badge ${job.active ? "on" : "off"}`}>
-          {job.active ? "● Active" : "Closed"}
-        </span>
+        <div className="job-top-right">
+          <span className={`badge ${job.active ? "on" : "off"}`}>
+            {job.active ? "● Active" : "Closed"}
+          </span>
+          <a className="view-link" href={`#/job/${job.id}`}>
+            View →
+          </a>
+        </div>
       </div>
 
       <p className="job-spec">{job.spec || <em>No spec provided</em>}</p>
