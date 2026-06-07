@@ -10,7 +10,7 @@
 ## What it does
 
 1. A **client** opens a job on the `AgentEscrow` contract, escrowing native **zkLTC** and setting a per-task wage.
-2. The **ChainAnalyst agent** (powered by Claude) autonomously does real work — it reads live LiteForge chain data and writes network health reports.
+2. The **ChainAnalyst agent** (LLM-powered via OpenRouter) autonomously does real work — it reads live LiteForge chain data and writes network health reports.
 3. For each completed task the agent submits `completeTask(jobId, keccak256(workOutput), summary)` — an **on-chain, verifiable work log** — and is **paid instantly** from escrow.
 4. When the escrow runs dry, the agent stops working. Top it up and it resumes. **No invoice, no trust, no middleman — just hard money for honest work.**
 
@@ -46,7 +46,7 @@ Agents can also hire *other* agents through the same contract: agent-to-agent co
 | RPC | `https://liteforge.rpc.caldera.xyz/http` |
 | Explorer | `https://liteforge.explorer.caldera.xyz` |
 | Faucet | `https://liteforge.hub.caldera.xyz` |
-| Contract | `<DEPLOYED_ADDRESS>` |
+| Contract | [`0xDea6Da93265871d828B20cace2BADd5F5e70209d`](https://liteforge.explorer.caldera.xyz/address/0xDea6Da93265871d828B20cace2BADd5F5e70209d) |
 
 ## Quickstart
 

@@ -3,7 +3,7 @@
  *
  * An AI agent that earns its living in zkLTC on LitVM LiteForge:
  *   1. Reads live chain state from the LiteForge RPC (blocks, gas, activity)
- *   2. Asks Claude to write a concise on-chain analyst report
+ *   2. Asks an LLM (via OpenRouter) to write a concise on-chain analyst report
  *   3. Hashes the report (keccak256) as verifiable proof-of-work
  *   4. Calls AgentEscrow.completeTask() — and gets paid zkLTC instantly
  *
@@ -18,8 +18,8 @@ const fs = require("fs");
 const path = require("path");
 
 const RPC_URL = "https://liteforge.rpc.caldera.xyz/http";
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-haiku-4-5-20251001"; // fast + cheap: ideal for a per-task wage economy
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b:free";
 
 const ESCROW_ABI = [
   "function jobs(uint256) view returns (address client, address agent, uint256 ratePerTask, uint256 balance, uint256 tasksCompleted, bool active, string spec)",
@@ -47,20 +47,23 @@ async function getChainSnapshot(provider) {
   };
 }
 
-async function askClaude(snapshot, taskIndex) {
-  const res = await fetch(ANTHROPIC_URL, {
+async function askLLM(snapshot, taskIndex) {
+  const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
+      authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "x-title": "AgentPay ChainAnalyst",
     },
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 600,
-      system:
-        "You are ChainAnalyst, an autonomous on-chain analyst agent working for zkLTC wages on LitVM LiteForge (Litecoin's first EVM rollup, chain ID 4441). Write a concise, professional network health report from the data provided. End with one actionable observation. Keep it under 150 words.",
       messages: [
+        {
+          role: "system",
+          content:
+            "You are ChainAnalyst, an autonomous on-chain analyst agent working for zkLTC wages on LitVM LiteForge (Litecoin's first EVM rollup, chain ID 4441). Write a concise, professional network health report from the data provided. End with one actionable observation. Keep it under 150 words.",
+        },
         {
           role: "user",
           content: `Report #${taskIndex}. Live LiteForge chain data:\n${JSON.stringify(snapshot, null, 2)}`,
@@ -68,9 +71,11 @@ async function askClaude(snapshot, taskIndex) {
       ],
     }),
   });
-  if (!res.ok) throw new Error(`Anthropic API ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`OpenRouter API ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  return data.content.map((b) => b.text ?? "").join("");
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error(`OpenRouter returned no content: ${JSON.stringify(data).slice(0, 300)}`);
+  return text;
 }
 
 async function main() {
@@ -80,7 +85,7 @@ async function main() {
     console.error("Usage: node agent/agent.js <jobId> [intervalSeconds]");
     process.exit(1);
   }
-  for (const k of ["AGENT_PRIVATE_KEY", "ANTHROPIC_API_KEY", "ESCROW_ADDRESS"]) {
+  for (const k of ["AGENT_PRIVATE_KEY", "OPENROUTER_API_KEY", "ESCROW_ADDRESS"]) {
     if (!process.env[k]) {
       console.error(`Missing ${k} in .env`);
       process.exit(1);
@@ -109,8 +114,8 @@ async function main() {
     console.log(`📊 Task #${taskIndex} — gathering live chain data...`);
     const snapshot = await getChainSnapshot(provider);
 
-    console.log("🧠 Asking Claude for the analyst report...");
-    const report = await askClaude(snapshot, taskIndex);
+    console.log(`🧠 Asking the LLM (${MODEL}) for the analyst report...`);
+    const report = await askLLM(snapshot, taskIndex);
     const workHash = ethers.keccak256(ethers.toUtf8Bytes(report));
 
     const summary = `LiteForge health report #${taskIndex} @ block ${snapshot.blockNumber}`;
