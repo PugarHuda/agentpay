@@ -37,6 +37,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden; /* hard shadows + rotated highlight must never cause sideways scroll */
+  max-width: 100%;
 }
 
 body {
@@ -47,6 +49,12 @@ body {
   font-weight: 500;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* keyboard accessibility — visible focus on the loud palette */
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
 }
 
 /* dotted grid backdrop */
@@ -404,6 +412,11 @@ a:hover {
   background: var(--white);
   border: var(--border);
   box-shadow: var(--shadow);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.stat:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-lg);
 }
 .stat:nth-child(1) {
   background: var(--lime);
@@ -600,6 +613,11 @@ textarea:disabled {
   border: var(--border);
   box-shadow: var(--shadow-sm);
   padding: 18px;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.job:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow);
 }
 .job.closed {
   opacity: 0.55;
@@ -850,6 +868,11 @@ textarea:disabled {
   border: var(--border);
   box-shadow: var(--shadow-sm);
   padding: 13px 15px;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.entry:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow);
 }
 .entry.fresh {
   animation: jolt 0.4s steps(2);
@@ -1049,5 +1072,54 @@ textarea:disabled {
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
+  }
+}
+
+/* ===================== mobile polish ===================== */
+@media (max-width: 600px) {
+  :root {
+    /* smaller hard shadows so nothing pushes past the viewport edge */
+    --shadow: 4px 4px 0 var(--ink);
+    --shadow-sm: 3px 3px 0 var(--ink);
+    --shadow-lg: 6px 6px 0 var(--ink);
+  }
+  .nav-inner {
+    height: auto;
+    padding: 12px 0;
+    flex-wrap: wrap;
+  }
+  .hero h1 {
+    font-size: clamp(30px, 9vw, 40px);
+  }
+  .hero h1 .grad {
+    transform: none; /* rotation + shadow can bleed past a narrow screen */
+  }
+  .hero p {
+    font-size: 15px;
+  }
+  .hero-cta {
+    width: 100%;
+    flex-direction: column; /* stack — nowrap buttons on one row overflow a phone */
+  }
+  .hero-cta .btn {
+    width: 100%;
+    text-align: center;
+  }
+  .detail-id {
+    font-size: 26px;
+  }
+  /* tap targets stay comfortable */
+  .btn {
+    padding: 12px 16px;
+  }
+}
+
+/* on touch devices, hover-lift would stick after tap — disable it */
+@media (hover: none) {
+  .stat:hover,
+  .job:hover,
+  .entry:hover,
+  .btn:hover:not(:disabled) {
+    transform: none;
   }
 }
