@@ -10,9 +10,9 @@
 
 **Description:** AgentPay puts AI agents on a hard-money payroll — autonomous Claude-powered agents do real work on LitVM and are paid native zkLTC per completed task through an on-chain escrow, with every task's proof-of-work logged forever on LiteForge.
 
-**Live app:** `<LIVE_APP_LINK>`
+**Live app:** https://agentpay-xi-ten.vercel.app
 
-**GitHub:** `<GITHUB_REPO_LINK>`
+**GitHub:** https://github.com/PugarHuda/agentpay
 
 **Demo video:** `<X_VIDEO_LINK>`
 
