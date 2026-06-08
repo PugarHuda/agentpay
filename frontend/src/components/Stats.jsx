@@ -22,7 +22,7 @@ export default function Stats({
   totalPaid,
   totalTasks,
   totalJobs,
-  activeJobs,
+  pendingCount,
   loading,
 }) {
   return (
@@ -35,9 +35,9 @@ export default function Stats({
         mint
         loading={loading}
       />
-      <Stat k="Tasks completed" icon="✅" value={totalTasks} loading={loading} />
+      <Stat k="Tasks paid" icon="✅" value={totalTasks} loading={loading} />
       <Stat k="Total jobs" icon="💼" value={totalJobs} loading={loading} />
-      <Stat k="Active jobs" icon="⚡" value={activeJobs} loading={loading} />
+      <Stat k="Pending review" icon="⏳" value={pendingCount} loading={loading} />
     </div>
   );
 }

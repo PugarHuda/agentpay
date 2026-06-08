@@ -2,6 +2,91 @@ import { useState } from "react";
 import { CHAIN } from "../config.js";
 import { agentStatus, errMsg, fmt, short, shortHash, timeAgo } from "../lib.js";
 
+const STATUS = { 0: "Pending", 1: "Paid", 2: "Rejected" };
+
+function TaskRow({ jobId, t, isClient, account, onApprove, onReject, onClaim, notify }) {
+  const [busy, setBusy] = useState(null);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const isAgent = account && account.toLowerCase() === t.agent.toLowerCase();
+  const claimable = t.status === 0 && nowSec >= t.claimableAt;
+  const secsLeft = Math.max(0, t.claimableAt - nowSec);
+  const statusKey = t.status === 1 ? "paid" : t.status === 2 ? "rejected" : "pending";
+
+  const run = async (fn, kind) => {
+    setBusy(kind);
+    try {
+      await fn();
+    } catch (e) {
+      notify("err", errMsg(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <li className={`entry task-${statusKey}`}>
+      <div className="entry-top">
+        <span className="entry-title">
+          Task #{t.id}
+          <span className={`task-badge ${statusKey}`}>{STATUS[t.status]}</span>
+        </span>
+        <span className={t.status === 1 ? "payout" : "task-amt"}>
+          {t.status === 1 ? "+" : ""}
+          {fmt(t.payout)} {CHAIN.symbol}
+        </span>
+      </div>
+      {t.summary && <p className="entry-sum">{t.summary}</p>}
+      <div className="entry-meta">
+        <span className="proof" title={`proof-of-work hash: ${t.workHash}`}>
+          🔏 {shortHash(t.workHash)}
+        </span>
+        <span className="sep">•</span>
+        <span>submitted {timeAgo(t.submittedAt)}</span>
+        {t.status === 0 && !claimable && (
+          <>
+            <span className="sep">•</span>
+            <span>claimable in {secsLeft}s</span>
+          </>
+        )}
+      </div>
+
+      {t.status === 0 && (
+        <div className="task-actions">
+          {isClient && (
+            <>
+              <button
+                className="btn btn-primary task-btn"
+                disabled={busy !== null}
+                onClick={() => run(() => onApprove(jobId, t.id), "approve")}
+              >
+                {busy === "approve" ? "Approving…" : "Approve & pay"}
+              </button>
+              <button
+                className="btn btn-danger task-btn"
+                disabled={busy !== null}
+                onClick={() => run(() => onReject(jobId, t.id, "rejected by client"), "reject")}
+              >
+                {busy === "reject" ? "Rejecting…" : "Reject"}
+              </button>
+            </>
+          )}
+          {isAgent && (
+            <button
+              className="btn btn-blue task-btn"
+              disabled={busy !== null || !claimable}
+              onClick={() => run(() => onClaim(jobId, t.id), "claim")}
+              title={claimable ? "" : `Claimable after the dispute window (${secsLeft}s left)`}
+            >
+              {busy === "claim" ? "Claiming…" : claimable ? "Claim payout" : `Claim in ${secsLeft}s`}
+            </button>
+          )}
+          {!isClient && !isAgent && <span className="task-await">awaiting client review</span>}
+        </div>
+      )}
+    </li>
+  );
+}
+
 /* cumulative-earnings bar chart (hand-rolled SVG, neobrutalist) */
 function EarningsChart({ entries, rate }) {
   // entries are newest-first; walk oldest-first to build cumulative total
@@ -45,7 +130,7 @@ function EarningsChart({ entries, rate }) {
   );
 }
 
-export default function JobDetail({ job, entries, account, lastTask, onBack, onFund, onClose, notify }) {
+export default function JobDetail({ job, entries, account, lastTask, onFund, onClose, onApprove, onReject, onClaim, notify }) {
   if (!job) {
     return (
       <main className="container">
@@ -97,8 +182,8 @@ export default function JobDetail({ job, entries, account, lastTask, onBack, onF
             </div>
           </div>
           <div className="dstat blue">
-            <div className="k">Tasks done</div>
-            <div className="v">{job.tasksCompleted}</div>
+            <div className="k">Tasks paid</div>
+            <div className="v">{job.tasksPaid}</div>
           </div>
           <div className="dstat pink">
             <div className="k">Tasks left</div>
@@ -168,44 +253,36 @@ export default function JobDetail({ job, entries, account, lastTask, onBack, onF
           <section className="card panel stream">
             <div className="phead">
               <h2 className="ptitle">
-                <span className="dot" /> Task log
+                <span className="dot" /> Task lifecycle
               </h2>
-              <span className="count">{entries.length}</span>
+              <span className="count">{job.tasks.length}</span>
             </div>
-            <p className="psub">Every paid task this agent has delivered.</p>
-            {entries.length === 0 ? (
+            <p className="psub">
+              Optimistic escrow: submitted → client approves/rejects, or the agent
+              claims after the dispute window.
+            </p>
+            {job.tasks.length === 0 ? (
               <div className="empty">
                 <div className="big">📡</div>
-                No tasks yet for this job.
+                No deliverables submitted yet for this job.
               </div>
             ) : (
               <ul className="stream-list">
-                {entries.map((e) => (
-                  <li key={e.key} className="entry">
-                    <div className="entry-top">
-                      <span className="entry-title">Task #{e.taskIndex} completed</span>
-                      <span className="payout">
-                        +{fmt(e.payout)} {CHAIN.symbol}
-                      </span>
-                    </div>
-                    {e.summary && <p className="entry-sum">{e.summary}</p>}
-                    <div className="entry-meta">
-                      <span className="proof" title={`proof-of-work hash: ${e.workHash}`}>
-                        🔏 {shortHash(e.workHash)}
-                      </span>
-                      <span className="sep">•</span>
-                      <span>{timeAgo(e.timestamp)}</span>
-                      <span className="sep">•</span>
-                      <a
-                        href={`${CHAIN.explorer}/tx/${e.txHash}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        tx ↗
-                      </a>
-                    </div>
-                  </li>
-                ))}
+                {[...job.tasks]
+                  .reverse()
+                  .map((t) => (
+                    <TaskRow
+                      key={t.id}
+                      jobId={job.id}
+                      t={t}
+                      isClient={isClient}
+                      account={account}
+                      onApprove={onApprove}
+                      onReject={onReject}
+                      onClaim={onClaim}
+                      notify={notify}
+                    />
+                  ))}
               </ul>
             )}
           </section>

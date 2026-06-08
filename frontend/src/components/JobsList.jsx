@@ -21,9 +21,9 @@ function JobCard({ job, isClient, lastTs, onFund, onClose, notify }) {
   const [busy, setBusy] = useState(null);
   const status = agentStatus(job.active, lastTs);
 
-  // escrow consumed vs original (paid + remaining), for the progress bar
-  const paid = BigInt(job.tasksCompleted) * job.ratePerTask;
-  const total = paid + job.balance;
+  // escrow consumed vs total (paid + free + reserved), for the progress bar
+  const paid = BigInt(job.tasksPaid) * job.ratePerTask;
+  const total = paid + job.balance + (job.reserved || 0n);
   const pct = total > 0n ? Number((paid * 100n) / total) : 0;
 
   const fund = async () => {
@@ -67,12 +67,19 @@ function JobCard({ job, isClient, lastTs, onFund, onClose, notify }) {
         </div>
       </div>
 
-      {job.active && (
-        <div className={`agent-status ${status.key}`}>
-          <span className={`as-dot ${status.key}`} />
-          {status.working ? "Agent working" : status.label}
-        </div>
-      )}
+      <div className="job-status-row">
+        {job.active && (
+          <span className={`agent-status ${status.key}`}>
+            <span className={`as-dot ${status.key}`} />
+            {status.working ? "Agent working" : status.label}
+          </span>
+        )}
+        {job.pending > 0 && (
+          <span className="agent-status pending-pill">
+            ⏳ {job.pending} pending review
+          </span>
+        )}
+      </div>
 
       <p className="job-spec">{job.spec || <em>No spec provided</em>}</p>
 
@@ -92,8 +99,8 @@ function JobCard({ job, isClient, lastTs, onFund, onClose, notify }) {
           <span className="vv">{fmt(job.balance)}</span>
         </div>
         <div className="cell">
-          <span className="k">Tasks done</span>
-          <span className="vv">{job.tasksCompleted}</span>
+          <span className="k">Tasks paid</span>
+          <span className="vv">{job.tasksPaid}</span>
         </div>
         <div className="cell">
           <span className="k">Tasks left</span>

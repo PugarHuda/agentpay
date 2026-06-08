@@ -26,6 +26,35 @@ contract ReentrantAgent {
     }
 }
 
+interface IAgentEscrowV2 {
+    function submitTask(uint256 jobId, bytes32 workHash, string calldata summary) external returns (uint256);
+    function claimTask(uint256 jobId, uint256 taskId) external;
+}
+
+/// @dev Test mock: V2 agent that re-enters claimTask from its payout hook.
+contract ReentrantAgentV2 {
+    IAgentEscrowV2 public immutable escrow;
+    uint256 public jobId;
+
+    constructor(address escrow_) {
+        escrow = IAgentEscrowV2(escrow_);
+    }
+
+    function submit(uint256 jobId_) external {
+        jobId = jobId_;
+        escrow.submitTask(jobId_, keccak256("attack"), "reentrant");
+    }
+
+    function claim(uint256 jobId_) external {
+        escrow.claimTask(jobId_, 0);
+    }
+
+    receive() external payable {
+        // try to claim the same task again — should revert (NotPending), swallowed
+        try escrow.claimTask(jobId, 0) {} catch {}
+    }
+}
+
 /// @dev Test mock: an agent whose receive() always reverts, so payouts fail.
 contract RejectingAgent {
     IAgentEscrow public immutable escrow;

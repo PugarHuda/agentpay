@@ -1,6 +1,7 @@
 node_modules/
 .env
 scripts/.seed-agents.json
+scripts/.seed-agents-v2.json
 cache/
 artifacts/
 coverage/

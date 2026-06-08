@@ -83,20 +83,34 @@ export default function App() {
       const n = Number(await contract.nextJobId());
       const list = await Promise.all(
         Array.from({ length: n }, async (_, i) => {
-          const [j, remaining] = await Promise.all([
+          const [j, remaining, rawTasks] = await Promise.all([
             contract.jobs(i),
             contract.tasksRemaining(i),
+            contract.getTasks(i, 0, 500),
           ]);
+          const tasks = rawTasks.map((t, idx) => ({
+            id: idx,
+            agent: t.agent,
+            payout: t.payout,
+            submittedAt: Number(t.submittedAt),
+            claimableAt: Number(t.claimableAt),
+            status: Number(t.status), // 0 Pending · 1 Paid · 2 Rejected
+            workHash: t.workHash,
+            summary: t.summary,
+          }));
           return {
             id: i,
             client: j.client,
             agent: j.agent,
             ratePerTask: j.ratePerTask,
             balance: j.balance,
-            tasksCompleted: Number(j.tasksCompleted),
+            reserved: j.reserved,
+            tasksPaid: Number(j.tasksPaid),
             active: j.active,
             spec: j.spec,
             remaining: Number(remaining),
+            tasks,
+            pending: tasks.filter((t) => t.status === 0).length,
           };
         })
       );
@@ -128,12 +142,14 @@ export default function App() {
 
   const logToEntry = useCallback(
     async (log, isNew) => {
-      const [jobId, agent, taskIndex, payout, workHash, summary] = log.args;
+      // TaskPaid(jobId, taskId, agent, payout, workHash, summary)
+      const [jobId, taskId, agent, payout, workHash, summary] = log.args;
       return {
         key: `${log.transactionHash}:${log.index}`,
         jobId: Number(jobId),
+        taskId: Number(taskId),
+        taskIndex: Number(taskId) + 1,
         agent,
-        taskIndex: Number(taskIndex),
         payout,
         workHash,
         summary,
@@ -150,13 +166,13 @@ export default function App() {
     if (!contract) return;
     try {
       const logs = await contract.queryFilter(
-        contract.filters.TaskCompleted(),
+        contract.filters.TaskPaid(),
         DEPLOY_BLOCK,
         "latest"
       );
       const entries = await Promise.all(logs.map((l) => logToEntry(l, false)));
       entries.sort(
-        (a, b) => b.blockNumber - a.blockNumber || b.taskIndex - a.taskIndex
+        (a, b) => b.blockNumber - a.blockNumber || b.taskId - a.taskId
       );
       setFeed(entries);
     } catch (e) {
@@ -205,9 +221,9 @@ export default function App() {
         console.error("live event failed", e);
       }
     };
-    contract.on("TaskCompleted", handler);
+    contract.on("TaskPaid", handler);
     return () => {
-      contract.off("TaskCompleted", handler);
+      contract.off("TaskPaid", handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contract, logToEntry, refreshJobs, account]);
@@ -327,29 +343,72 @@ export default function App() {
       await tx.wait();
       await refreshJobs();
       if (account) refreshBalance(account);
-      notify("ok", `Job #${jobId} closed — unspent escrow refunded`);
+      notify("ok", `Job #${jobId} closed — unspent (free) escrow refunded`);
     },
     [getWriteContract, refreshJobs, refreshBalance, account, notify]
   );
 
+  // ---- V2 optimistic task actions ----
+  const approveTask = useCallback(
+    async (jobId, taskId) => {
+      const c = await getWriteContract();
+      const tx = await c.approveTask(jobId, taskId);
+      await tx.wait();
+      await Promise.all([refreshJobs(), loadFeed()]);
+      if (account) refreshBalance(account);
+      notify("ok", `Approved task #${taskId} of job #${jobId} — agent paid`);
+    },
+    [getWriteContract, refreshJobs, loadFeed, refreshBalance, account, notify]
+  );
+
+  const rejectTask = useCallback(
+    async (jobId, taskId, reason) => {
+      const c = await getWriteContract();
+      const tx = await c.rejectTask(jobId, taskId, reason || "rejected by client");
+      await tx.wait();
+      await refreshJobs();
+      if (account) refreshBalance(account);
+      notify("ok", `Rejected task #${taskId} — escrow returned, agent unpaid`);
+    },
+    [getWriteContract, refreshJobs, refreshBalance, account, notify]
+  );
+
+  const claimTask = useCallback(
+    async (jobId, taskId) => {
+      const c = await getWriteContract();
+      const tx = await c.claimTask(jobId, taskId);
+      await tx.wait();
+      await Promise.all([refreshJobs(), loadFeed()]);
+      if (account) refreshBalance(account);
+      notify("ok", `Claimed task #${taskId} — optimistic payout released`);
+    },
+    [getWriteContract, refreshJobs, loadFeed, refreshBalance, account, notify]
+  );
+
   // ---- derived stats ----
   const totalJobs = jobs.length;
-  const activeJobs = useMemo(() => jobs.filter((j) => j.active).length, [jobs]);
   const totalTasks = feed.length;
   const totalPaid = useMemo(
     () => feed.reduce((acc, e) => acc + e.payout, 0n),
     [feed]
   );
-  // most recent task timestamp per job — powers the live "Working / Idle" status
+  // most recent SUBMIT timestamp per job — powers the live "Working / Idle"
+  // status (an agent submitting work right now is the strongest "working" signal)
   const lastTaskByJob = useMemo(() => {
     const m = {};
-    for (const e of feed) {
-      if (e.timestamp && (!m[e.jobId] || e.timestamp > m[e.jobId])) {
-        m[e.jobId] = e.timestamp;
+    for (const j of jobs) {
+      for (const t of j.tasks || []) {
+        if (t.submittedAt && (!m[j.id] || t.submittedAt > m[j.id])) {
+          m[j.id] = t.submittedAt;
+        }
       }
     }
     return m;
-  }, [feed]);
+  }, [jobs]);
+  const pendingCount = useMemo(
+    () => jobs.reduce((a, j) => a + (j.pending || 0), 0),
+    [jobs]
+  );
   // recomputed every render (1s tick) so the dashboard "working now" count is live
   const nowSec = Math.floor(Date.now() / 1000);
   const workingNow = jobs.filter(
@@ -379,6 +438,9 @@ export default function App() {
           lastTask={lastTaskByJob[route.id]}
           onFund={fundJob}
           onClose={closeJob}
+          onApprove={approveTask}
+          onReject={rejectTask}
+          onClaim={claimTask}
           notify={notify}
         />
       )}
@@ -409,7 +471,7 @@ export default function App() {
             totalPaid={fmt(totalPaid)}
             totalTasks={totalTasks}
             totalJobs={totalJobs}
-            activeJobs={activeJobs}
+            pendingCount={pendingCount}
             loading={loading}
           />
           <div className="grid">

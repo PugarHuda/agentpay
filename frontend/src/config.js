@@ -21,6 +21,9 @@ function cleanAddress(raw) {
 }
 export const ESCROW_ADDRESS = cleanAddress(import.meta.env.VITE_ESCROW_ADDRESS);
 
-// Scanning logs from genesis times out on the public RPC (16.7M+ blocks),
-// so event queries start at the contract's deployment block.
-export const DEPLOY_BLOCK = Number(import.meta.env.VITE_DEPLOY_BLOCK || 16703976);
+// Scanning logs from genesis times out on the public RPC (16.9M+ blocks),
+// so event queries start at the V2 contract's deployment block.
+export const DEPLOY_BLOCK = Number(import.meta.env.VITE_DEPLOY_BLOCK || 16915886);
+
+// Optimistic-escrow dispute window (seconds) — must match the deployed contract.
+export const DISPUTE_WINDOW = Number(import.meta.env.VITE_DISPUTE_WINDOW || 90);
