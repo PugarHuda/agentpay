@@ -30,6 +30,19 @@ export function timeAgo(ts) {
   return new Date(Number(ts) * 1000).toLocaleString();
 }
 
+/**
+ * Live agent status derived purely from on-chain task timestamps.
+ * The chain can't see if a process is running, but a recent completed task is
+ * strong evidence the agent is actively working right now.
+ */
+export function agentStatus(active, lastTs, windowSec = 120) {
+  if (!active) return { key: "closed", label: "Closed", working: false };
+  if (!lastTs) return { key: "idle", label: "No deliveries yet", working: false };
+  const age = Math.floor(Date.now() / 1000) - Number(lastTs);
+  if (age < windowSec) return { key: "working", label: "Working", working: true };
+  return { key: "idle", label: `Idle · last ${timeAgo(lastTs)}`, working: false };
+}
+
 /** Human-friendly error message from an ethers / wallet error */
 export function errMsg(e) {
   if (!e) return "Unknown error";

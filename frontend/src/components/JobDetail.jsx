@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CHAIN } from "../config.js";
-import { errMsg, fmt, short, shortHash, timeAgo } from "../lib.js";
+import { agentStatus, errMsg, fmt, short, shortHash, timeAgo } from "../lib.js";
 
 /* cumulative-earnings bar chart (hand-rolled SVG, neobrutalist) */
 function EarningsChart({ entries, rate }) {
@@ -45,7 +45,7 @@ function EarningsChart({ entries, rate }) {
   );
 }
 
-export default function JobDetail({ job, entries, account, onBack, onFund, onClose, notify }) {
+export default function JobDetail({ job, entries, account, lastTask, onBack, onFund, onClose, notify }) {
   if (!job) {
     return (
       <main className="container">
@@ -64,6 +64,7 @@ export default function JobDetail({ job, entries, account, onBack, onFund, onClo
 
   const earned = entries.reduce((a, e) => a + e.payout, 0n);
   const isClient = account && account.toLowerCase() === job.client.toLowerCase();
+  const status = agentStatus(job.active, lastTask);
 
   return (
     <main className="container">
@@ -79,6 +80,12 @@ export default function JobDetail({ job, entries, account, onBack, onFund, onClo
           <span className={`badge ${job.active ? "on" : "off"}`}>
             {job.active ? "● Active" : "Closed"}
           </span>
+          {job.active && (
+            <span className={`agent-status ${status.key}`}>
+              <span className={`as-dot ${status.key}`} />
+              {status.working ? "Agent working" : status.label}
+            </span>
+          )}
         </div>
         <p className="detail-spec">{job.spec || <em>No spec provided</em>}</p>
 

@@ -327,6 +327,16 @@ export default function App() {
     () => feed.reduce((acc, e) => acc + e.payout, 0n),
     [feed]
   );
+  // most recent task timestamp per job — powers the live "Working / Idle" status
+  const lastTaskByJob = useMemo(() => {
+    const m = {};
+    for (const e of feed) {
+      if (e.timestamp && (!m[e.jobId] || e.timestamp > m[e.jobId])) {
+        m[e.jobId] = e.timestamp;
+      }
+    }
+    return m;
+  }, [feed]);
 
   return (
     <div className="app">
@@ -348,6 +358,7 @@ export default function App() {
           job={jobs.find((j) => j.id === route.id) || null}
           entries={feed.filter((e) => e.jobId === route.id)}
           account={account}
+          lastTask={lastTaskByJob[route.id]}
           onFund={fundJob}
           onClose={closeJob}
           notify={notify}
@@ -422,6 +433,7 @@ export default function App() {
             account={account}
             loading={loading}
             grid
+            lastTaskByJob={lastTaskByJob}
             onFund={fundJob}
             onClose={closeJob}
             notify={notify}

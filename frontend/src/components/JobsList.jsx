@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CHAIN, ESCROW_ADDRESS } from "../config.js";
-import { errMsg, fmt, short } from "../lib.js";
+import { agentStatus, errMsg, fmt, short } from "../lib.js";
 
 function AddrLink({ addr }) {
   return (
@@ -16,9 +16,10 @@ function AddrLink({ addr }) {
   );
 }
 
-function JobCard({ job, isClient, onFund, onClose, notify }) {
+function JobCard({ job, isClient, lastTs, onFund, onClose, notify }) {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(null);
+  const status = agentStatus(job.active, lastTs);
 
   // escrow consumed vs original (paid + remaining), for the progress bar
   const paid = BigInt(job.tasksCompleted) * job.ratePerTask;
@@ -65,6 +66,13 @@ function JobCard({ job, isClient, onFund, onClose, notify }) {
           </a>
         </div>
       </div>
+
+      {job.active && (
+        <div className={`agent-status ${status.key}`}>
+          <span className={`as-dot ${status.key}`} />
+          {status.working ? "Agent working" : status.label}
+        </div>
+      )}
 
       <p className="job-spec">{job.spec || <em>No spec provided</em>}</p>
 
@@ -125,7 +133,7 @@ function JobCard({ job, isClient, onFund, onClose, notify }) {
   );
 }
 
-export default function JobsList({ jobs, account, loading, grid, onFund, onClose, notify }) {
+export default function JobsList({ jobs, account, loading, grid, lastTaskByJob = {}, onFund, onClose, notify }) {
   return (
     <section className="card panel">
       <div className="phead">
@@ -152,6 +160,7 @@ export default function JobsList({ jobs, account, loading, grid, onFund, onClose
               isClient={
                 account && account.toLowerCase() === job.client.toLowerCase()
               }
+              lastTs={lastTaskByJob[job.id]}
               onFund={onFund}
               onClose={onClose}
               notify={notify}

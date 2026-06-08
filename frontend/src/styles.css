@@ -929,6 +929,44 @@ textarea:disabled {
   color: var(--ink);
   margin: 0 0 14px;
 }
+
+/* agent live status */
+.agent-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 10px;
+  border: var(--border-2);
+  margin-bottom: 12px;
+}
+.agent-status.working {
+  background: var(--lime);
+}
+.agent-status.idle {
+  background: var(--paper-2);
+}
+.as-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+}
+.as-dot.working {
+  background: var(--mint, #34e0a0);
+  background: #1faa6b;
+  animation: blink 1.1s steps(1) infinite;
+}
+.as-dot.idle {
+  background: var(--text-4, #8a8a7a);
+  background: #b3a98e;
+}
+.detail-top .agent-status {
+  margin-bottom: 0;
+}
 .job-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
