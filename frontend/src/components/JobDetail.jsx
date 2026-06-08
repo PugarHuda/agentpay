@@ -4,7 +4,7 @@ import { agentStatus, errMsg, fmt, short, shortHash, timeAgo } from "../lib.js";
 
 const STATUS = { 0: "Pending", 1: "Paid", 2: "Rejected ⚠", 3: "In dispute", 4: "Rejected" };
 
-function TaskRow({ jobId, t, job, isClient, isArbiter, account, disputeWindow, onApprove, onReject, onClaim, onDispute, onResolve, onFinalize, notify }) {
+function TaskRow({ jobId, t, job, isClient, isArbiter, account, disputeWindow, onApprove, onReject, onClaim, onDispute, onResolve, onFinalize, onForceResolve, notify }) {
   const [busy, setBusy] = useState(null);
   const nowSec = Math.floor(Date.now() / 1000);
   const isAgent = account && account.toLowerCase() === t.agent.toLowerCase();
@@ -13,6 +13,9 @@ function TaskRow({ jobId, t, job, isClient, isArbiter, account, disputeWindow, o
   // RejectedProposed window: agent can dispute / anyone can finalize after it
   const rejSecsLeft = Math.max(0, t.rejectedAt + disputeWindow - nowSec);
   const canFinalize = t.status === 2 && rejSecsLeft === 0;
+  // Disputed: if the arbiter ignores it past the window, anyone can unstick it
+  const stuckSecsLeft = Math.max(0, Number(t.disputedAt) + disputeWindow - nowSec);
+  const canForceResolve = t.status === 3 && stuckSecsLeft === 0;
   const statusKey =
     t.status === 1 ? "paid" : t.status === 4 ? "rejected" : t.status === 3 ? "disputed" : t.status === 2 ? "proposed" : "pending";
 
@@ -95,10 +98,10 @@ function TaskRow({ jobId, t, job, isClient, isArbiter, account, disputeWindow, o
         </div>
       )}
 
-      {/* Disputed: only the neutral arbiter resolves */}
+      {/* Disputed: arbiter resolves; if it times out, anyone can unstick it */}
       {t.status === 3 && (
         <div className="task-actions">
-          {isArbiter ? (
+          {isArbiter && !canForceResolve && (
             <>
               <span className="task-await" style={{ width: "100%" }}>⚖️ You are the arbiter — rule on this dispute:</span>
               <button className="btn btn-primary task-btn" disabled={busy !== null} onClick={() => run(() => onResolve(jobId, t.id, true), "ruleAgent")}>
@@ -108,8 +111,15 @@ function TaskRow({ jobId, t, job, isClient, isArbiter, account, disputeWindow, o
                 {busy === "ruleClient" ? "…" : "Rule for client (slash)"}
               </button>
             </>
+          )}
+          {canForceResolve ? (
+            <button className="btn btn-blue task-btn" disabled={busy !== null} onClick={() => run(() => onForceResolve(jobId, t.id), "force")} title="Arbiter timed out — unstick for the agent">
+              {busy === "force" ? "Resolving…" : "⏱ Arbiter timed out — force-resolve for agent"}
+            </button>
           ) : (
-            <span className="task-await">⚖️ in dispute — awaiting the neutral arbiter</span>
+            !isArbiter && (
+              <span className="task-await">⚖️ in dispute — awaiting the arbiter ({stuckSecsLeft}s to timeout)</span>
+            )
           )}
         </div>
       )}
@@ -202,7 +212,7 @@ function AcceptStake({ jobId, minStake, onAccept, notify }) {
   );
 }
 
-export default function JobDetail({ job, entries, account, lastTask, onFund, onClose, onApprove, onReject, onClaim, onAccept, onDispute, onResolve, onFinalize, notify }) {
+export default function JobDetail({ job, entries, account, lastTask, onFund, onClose, onApprove, onReject, onClaim, onAccept, onDispute, onResolve, onFinalize, onForceResolve, notify }) {
   if (!job) {
     return (
       <main className="container">
@@ -399,6 +409,7 @@ export default function JobDetail({ job, entries, account, lastTask, onFund, onC
                       onDispute={onDispute}
                       onResolve={onResolve}
                       onFinalize={onFinalize}
+                      onForceResolve={onForceResolve}
                       notify={notify}
                     />
                   ))}

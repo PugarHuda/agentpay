@@ -54,6 +54,7 @@ contract AgentEscrowV4 {
         uint64 submittedAt;
         uint64 claimableAt; // Pending → claimable after this (optimistic)
         uint64 rejectedAt; // RejectedProposed → finalizable / disputable until +window
+        uint64 disputedAt; // Disputed → arbiter must resolve before +window, else anyone can
         Status status;
         bytes32 workHash;
         string summary;
@@ -140,6 +141,8 @@ contract AgentEscrowV4 {
         string calldata spec
     ) external payable returns (uint256 jobId) {
         if (agent == address(0) || arbiter == address(0)) revert ZeroAddress();
+        // a neutral arbiter must not be either party (no self-judging)
+        if (arbiter == msg.sender || arbiter == agent) revert InvalidConfig();
         if (ratePerTask == 0) revert ZeroRate();
         if (msg.value < ratePerTask) revert InsufficientEscrow();
         if (slashPerReject == 0 || minStake < slashPerReject) revert InvalidConfig();
@@ -181,6 +184,8 @@ contract AgentEscrowV4 {
         if (msg.sender != job.client) revert NotClient();
         Task storage t = _task(jobId, taskId);
         if (t.status != Status.Pending) revert WrongState();
+        // can't snatch back a task the agent could already claim optimistically
+        if (block.timestamp >= t.claimableAt) revert WindowElapsed();
         t.status = Status.RejectedProposed;
         t.rejectedAt = uint64(block.timestamp);
         emit RejectionProposed(jobId, taskId, reason);
@@ -238,6 +243,7 @@ contract AgentEscrowV4 {
                 submittedAt: uint64(block.timestamp),
                 claimableAt: claimableAt,
                 rejectedAt: 0,
+                disputedAt: 0,
                 status: Status.Pending,
                 workHash: workHash,
                 summary: summary
@@ -264,6 +270,7 @@ contract AgentEscrowV4 {
         if (t.status != Status.RejectedProposed) revert WrongState();
         if (block.timestamp > t.rejectedAt + disputeWindow) revert WindowElapsed();
         t.status = Status.Disputed;
+        t.disputedAt = uint64(block.timestamp);
         emit RejectionDisputed(jobId, taskId);
     }
 
@@ -308,6 +315,19 @@ contract AgentEscrowV4 {
         if (block.timestamp <= t.rejectedAt + disputeWindow) revert WindowNotElapsed();
         uint256 slashed = _finalizeReject(job, jobId, taskId, t);
         emit RejectionFinalized(jobId, taskId, slashed);
+    }
+
+    /// @notice Liveness backstop: if the arbiter doesn't resolve a dispute within
+    ///         its response window, ANYONE can force it in the agent's favour.
+    ///         This stops an absent/malicious arbiter from locking funds & stake
+    ///         forever (the agent isn't punished for arbiter inaction).
+    function forceResolveStuck(uint256 jobId, uint256 taskId) external {
+        Job storage job = jobs[jobId];
+        Task storage t = _task(jobId, taskId);
+        if (t.status != Status.Disputed) revert WrongState();
+        if (block.timestamp <= t.disputedAt + disputeWindow) revert WindowNotElapsed();
+        emit DisputeResolved(jobId, taskId, true, 0);
+        _pay(job, jobId, taskId, t); // pay the agent, no slash
     }
 
     // ------------------------------------------------------------------ views

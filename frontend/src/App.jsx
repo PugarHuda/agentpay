@@ -94,7 +94,9 @@ export default function App() {
             payout: t.payout,
             submittedAt: Number(t.submittedAt),
             claimableAt: Number(t.claimableAt),
-            status: Number(t.status), // 0 Pending · 1 Paid · 2 Rejected
+            rejectedAt: Number(t.rejectedAt),
+            disputedAt: Number(t.disputedAt),
+            status: Number(t.status), // 0 Pending·1 Paid·2 Proposed·3 Disputed·4 RejectedFinal
             workHash: t.workHash,
             summary: t.summary,
           }));
@@ -440,6 +442,17 @@ export default function App() {
     [getWriteContract, refreshJobs, notify]
   );
 
+  // liveness backstop: anyone unsticks a dispute an absent arbiter ignored
+  const forceResolve = useCallback(
+    async (jobId, taskId) => {
+      const c = await getWriteContract();
+      await (await c.forceResolveStuck(jobId, taskId)).wait();
+      await Promise.all([refreshJobs(), loadFeed()]);
+      notify("ok", `Stuck dispute force-resolved for the agent (arbiter timed out)`);
+    },
+    [getWriteContract, refreshJobs, loadFeed, notify]
+  );
+
   // ---- derived stats ----
   const totalJobs = jobs.length;
   const totalTasks = feed.length;
@@ -500,6 +513,7 @@ export default function App() {
           onDispute={disputeRejection}
           onResolve={resolveDispute}
           onFinalize={finalizeRejection}
+          onForceResolve={forceResolve}
           notify={notify}
         />
       )}

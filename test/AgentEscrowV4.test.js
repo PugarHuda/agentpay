@@ -30,6 +30,46 @@ describe("AgentEscrowV4 — neutral arbitration", function () {
     ).to.be.revertedWithCustomError(escrow, "ZeroAddress");
   });
 
+  it("arbiter cannot be the client or the agent (no self-judging)", async function () {
+    await expect(
+      escrow.connect(client).createJob(agent.address, client.address, RATE, SLASH, MIN_STAKE, "x", { value: DEPOSIT })
+    ).to.be.revertedWithCustomError(escrow, "InvalidConfig");
+    await expect(
+      escrow.connect(client).createJob(agent.address, agent.address, RATE, SLASH, MIN_STAKE, "x", { value: DEPOSIT })
+    ).to.be.revertedWithCustomError(escrow, "InvalidConfig");
+  });
+
+  describe("liveness & griefing fixes", function () {
+    it("an absent arbiter cannot lock funds — anyone force-resolves for the agent after the window", async function () {
+      await setup();
+      await submit("good");
+      await escrow.connect(client).rejectTask(0, 0, "bogus");
+      await escrow.connect(agent).disputeRejection(0, 0);
+      // arbiter never acts; before the window, force-resolve is blocked
+      await expect(escrow.connect(other).forceResolveStuck(0, 0)).to.be.revertedWithCustomError(
+        escrow,
+        "WindowNotElapsed"
+      );
+      await time.increase(WINDOW + 1);
+      // now anyone can unstick it → agent paid, stake intact
+      await expect(escrow.connect(other).forceResolveStuck(0, 0)).to.changeEtherBalance(agent, RATE);
+      expect((await escrow.jobs(0)).stake).to.equal(STAKE);
+      expect((await escrow.getTask(0, 0)).status).to.equal(1); // Paid
+    });
+
+    it("client cannot reject a task once it is optimistically claimable", async function () {
+      await setup();
+      await submit();
+      await time.increase(WINDOW + 1); // claim window passed
+      await expect(escrow.connect(client).rejectTask(0, 0, "too late")).to.be.revertedWithCustomError(
+        escrow,
+        "WindowElapsed"
+      );
+      // the agent's optimistic claim still works
+      await expect(escrow.connect(agent).claimTask(0, 0)).to.changeEtherBalance(agent, RATE);
+    });
+  });
+
   describe("reject is only a proposal — nothing slashed yet", function () {
     it("rejectTask holds funds, does not slash on its own", async function () {
       await setup();

@@ -11,7 +11,7 @@ const ABI = [
   "function nextJobId() view returns (uint256)",
   "function totalBurned() view returns (uint256)",
   "function jobs(uint256) view returns (address client, address agent, address arbiter, uint256 ratePerTask, uint256 balance, uint256 reserved, uint256 tasksPaid, uint256 stake, uint256 slashPerReject, uint256 minStake, uint256 unresolved, uint64 lastSubmitAt, bool active, bool accepted, string spec)",
-  "function getTasks(uint256, uint256, uint256) view returns (tuple(address agent, uint256 payout, uint64 submittedAt, uint64 claimableAt, uint64 rejectedAt, uint8 status, bytes32 workHash, string summary)[])",
+  "function getTasks(uint256, uint256, uint256) view returns (tuple(address agent, uint256 payout, uint64 submittedAt, uint64 claimableAt, uint64 rejectedAt, uint64 disputedAt, uint8 status, bytes32 workHash, string summary)[])",
   "event TaskPaid(uint256 indexed jobId, uint256 indexed taskId, address indexed agent, uint256 payout, bytes32 workHash, string summary)",
   "event DisputeResolved(uint256 indexed jobId, uint256 indexed taskId, bool agentWon, uint256 slashed)",
   "event RejectionFinalized(uint256 indexed jobId, uint256 indexed taskId, uint256 slashed)",
