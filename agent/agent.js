@@ -1,10 +1,14 @@
 /**
- * AgentPay autonomous worker — "ChainAnalyst"
+ * AgentPay autonomous worker — job-aware AI agent
  *
- * An AI agent that earns its living in zkLTC on LitVM LiteForge:
- *   1. Reads live chain state from the LiteForge RPC (blocks, gas, activity)
- *   2. Asks an LLM (via OpenRouter) to write a concise on-chain analyst report
- *   3. Hashes the report (keccak256) as verifiable proof-of-work
+ * One agent binary that can work ANY job: it reads the job's `spec` straight
+ * from the on-chain escrow and uses it as its task instructions. So the same
+ * code does a "DeFi Sentinel" job differently from a "NewsDigest" job — the
+ * contract itself tells the agent what to do.
+ *
+ *   1. Reads the job spec + live chain state from LiteForge
+ *   2. Asks an LLM (via OpenRouter) to do the work described by the spec
+ *   3. Hashes the output (keccak256) as verifiable proof-of-work
  *   4. Calls AgentEscrow.completeTask() — and gets paid zkLTC instantly
  *
  * Every task it completes is a real transaction on LiteForge, visible at
@@ -50,13 +54,14 @@ async function getChainSnapshot(provider) {
   };
 }
 
-async function askLLM(snapshot, taskIndex) {
+/** Do the work described by the job's on-chain spec, using live chain data. */
+async function askLLM(spec, snapshot, taskIndex) {
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "x-title": "AgentPay ChainAnalyst",
+      "x-title": "AgentPay Agent",
     },
     body: JSON.stringify({
       model: MODEL,
@@ -65,11 +70,14 @@ async function askLLM(snapshot, taskIndex) {
         {
           role: "system",
           content:
-            "You are ChainAnalyst, an autonomous on-chain analyst agent working for zkLTC wages on LitVM LiteForge (Litecoin's first EVM rollup, chain ID 4441). Write a concise, professional network health report from the data provided. End with one actionable observation. Keep it under 150 words.",
+            "You are an autonomous AI agent earning zkLTC wages on AgentPay, running on LitVM LiteForge (Litecoin's first EVM rollup, chain ID 4441). " +
+            "You have been hired for a specific job. Perform EXACTLY the task described in your job spec, using the live chain data provided. " +
+            "Be concise, concrete and professional. End with one actionable takeaway. Keep it under 150 words.\n\n" +
+            `YOUR JOB SPEC:\n"${spec}"`,
         },
         {
           role: "user",
-          content: `Report #${taskIndex}. Live LiteForge chain data:\n${JSON.stringify(snapshot, null, 2)}`,
+          content: `Deliverable #${taskIndex}. Live LiteForge chain data:\n${JSON.stringify(snapshot, null, 2)}`,
         },
       ],
     }),
@@ -79,6 +87,12 @@ async function askLLM(snapshot, taskIndex) {
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new Error(`OpenRouter returned no content: ${JSON.stringify(data).slice(0, 300)}`);
   return text;
+}
+
+/** A short agent label derived from the job spec (text before the first colon). */
+function agentLabel(spec) {
+  const m = (spec || "").match(/^\s*([^:]{1,40}):/);
+  return m ? m[1].trim() : "Agent";
 }
 
 async function main() {
@@ -102,8 +116,18 @@ async function main() {
   const outDir = path.join(__dirname, "outputs");
   fs.mkdirSync(outDir, { recursive: true });
 
-  console.log(`🤖 ChainAnalyst online — agent wallet ${wallet.address}`);
-  console.log(`   Job #${jobId} on escrow ${process.env.ESCROW_ADDRESS}\n`);
+  // read the job once up front so we can announce what this agent will do
+  const initialJob = await escrow.jobs(jobId);
+  const label = agentLabel(initialJob.spec);
+  console.log(`🤖 ${label} online — agent wallet ${wallet.address}`);
+  console.log(`   Job #${jobId} on escrow ${process.env.ESCROW_ADDRESS}`);
+  console.log(`   Spec: "${initialJob.spec}"\n`);
+  if (initialJob.agent.toLowerCase() !== wallet.address.toLowerCase()) {
+    console.error(
+      `❌ This wallet is not the agent for job #${jobId} (job agent: ${initialJob.agent}). completeTask would revert.`
+    );
+    process.exit(1);
+  }
 
   // keep running until the escrow runs dry — the agent works for as long as
   // it's paid, and shrugs off transient RPC/LLM failures instead of dying
@@ -134,14 +158,15 @@ async function runOneTask(provider, escrow, jobId, outDir) {
 
   const job = await escrow.jobs(jobId);
   const taskIndex = Number(job.tasksCompleted) + 1;
-  console.log(`📊 Task #${taskIndex} — gathering live chain data...`);
+  const label = agentLabel(job.spec);
+  console.log(`📊 ${label} task #${taskIndex} — gathering live chain data...`);
   const snapshot = await getChainSnapshot(provider);
 
-  console.log(`🧠 Asking the LLM (${MODEL}) for the analyst report...`);
-  const report = await askLLM(snapshot, taskIndex);
+  console.log(`🧠 Working the job spec via ${MODEL}...`);
+  const report = await askLLM(job.spec, snapshot, taskIndex);
   const workHash = ethers.keccak256(ethers.toUtf8Bytes(report));
 
-  const summary = `LiteForge health report #${taskIndex} @ block ${snapshot.blockNumber}`;
+  const summary = `${label} deliverable #${taskIndex} @ block ${snapshot.blockNumber}`;
   console.log(`⛓️  Submitting completeTask (workHash ${workHash.slice(0, 18)}…)...`);
   const tx = await escrow.completeTask(jobId, workHash, summary);
   const receipt = await tx.wait();

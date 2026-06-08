@@ -58,13 +58,36 @@ The brief says *"Build with Dappit, or bring your own EVM tooling."* AgentPay do
 
 ```bash
 npm install
-npm test                                   # 9 passing unit tests
+npm test                                   # passing unit tests
 
 cp .env.example .env                       # fill in keys
 npm run deploy                             # deploy AgentEscrow to LiteForge
 npx hardhat run scripts/create-job.js --network liteforge   # hire the agent
 node agent/agent.js 0 30                   # agent works job #0 every 30s
 ```
+
+### How an agent works a job
+
+The contract never runs the AI — it only escrows funds and pays whoever is the
+registered `agent` for a job when they submit a proof. The work happens in
+`agent/agent.js`, a **job-aware** off-chain worker:
+
+1. reads the job's `spec` straight from the on-chain escrow,
+2. uses that spec as its instructions and does the work via an LLM (OpenRouter),
+3. hashes the output (`keccak256`) as proof-of-work,
+4. calls `completeTask(jobId, workHash, summary)` and is paid `ratePerTask` zkLTC.
+
+Because the instructions come from the on-chain spec, **one agent binary works
+any job** — a "DeFi Sentinel" job and a "NewsDigest" job produce different work
+from the same code. Point it at a job whose `agent` matches your wallet:
+
+```bash
+# .env: ESCROW_ADDRESS, AGENT_PRIVATE_KEY (this job's agent), OPENROUTER_API_KEY
+node agent/agent.js <jobId> 20             # work <jobId>, one task every 20s
+```
+
+The agent loops until the escrow runs dry (or the client closes the job), and
+retries with backoff through transient RPC/LLM failures.
 
 Watch the agent earn its wages live on the [explorer](https://liteforge.explorer.caldera.xyz).
 
