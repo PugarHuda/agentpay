@@ -4,23 +4,24 @@ import { CHAIN, ESCROW_ADDRESS, DEPLOY_BLOCK } from "./config.js";
 import { ESCROW_ABI } from "./abi.js";
 import { errMsg, fmt, short } from "./lib.js";
 import Nav from "./components/Nav.jsx";
-import Hero from "./components/Hero.jsx";
 import Stats from "./components/Stats.jsx";
 import HireForm from "./components/HireForm.jsx";
 import JobsList from "./components/JobsList.jsx";
 import WorkFeed from "./components/WorkFeed.jsx";
 import Footer from "./components/Footer.jsx";
 import JobDetail from "./components/JobDetail.jsx";
+import Landing from "./components/Landing.jsx";
 
 // tiny hash router
 function parseRoute() {
   const h = window.location.hash || "";
   const job = h.match(/^#\/job\/(\d+)/);
   if (job) return { name: "job", id: Number(job[1]) };
+  if (h.startsWith("#/dashboard")) return { name: "dashboard" };
   if (h.startsWith("#/hire")) return { name: "hire" };
   if (h.startsWith("#/jobs")) return { name: "jobs" };
   if (h.startsWith("#/activity")) return { name: "activity" };
-  return { name: "dashboard" };
+  return { name: "landing" };
 }
 
 export default function App() {
@@ -353,14 +354,19 @@ export default function App() {
         />
       )}
 
+      {route.name === "landing" && (
+        <Landing
+          account={account}
+          totalPaid={fmt(totalPaid)}
+          totalTasks={totalTasks}
+          totalJobs={totalJobs}
+          onConnect={connect}
+        />
+      )}
+
       {route.name === "dashboard" && (
-        <main className="container">
-          <Hero
-            account={account}
-            totalPaid={fmt(totalPaid)}
-            totalTasks={totalTasks}
-            onConnect={connect}
-          />
+        <main className="container page">
+          <h1 className="page-title">⚡ Dashboard</h1>
           <Stats
             totalPaid={fmt(totalPaid)}
             totalTasks={totalTasks}
