@@ -130,7 +130,48 @@ function EarningsChart({ entries, rate }) {
   );
 }
 
-export default function JobDetail({ job, entries, account, lastTask, onFund, onClose, onApprove, onReject, onClaim, notify }) {
+function AcceptStake({ jobId, slashPerReject, onAccept, notify }) {
+  const suggested = slashPerReject > 0n ? fmt(slashPerReject * 2n) : "0.002";
+  const [stake, setStake] = useState(suggested);
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    if (!stake || Number(stake) <= 0) return notify("err", "Enter a stake amount");
+    setBusy(true);
+    try {
+      await onAccept(jobId, stake);
+    } catch (e) {
+      notify("err", errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="card panel">
+      <div className="phead">
+        <h2 className="ptitle">🔒 Accept & stake</h2>
+      </div>
+      <p className="psub">
+        You're this job's agent. Lock a stake to start working — it's slashed
+        (burned) if the client rejects your work, so honest work pays.
+      </p>
+      <div className="job-actions" style={{ borderTop: "none", paddingTop: 0, marginTop: 0 }}>
+        <input
+          className="mono fund-input"
+          type="text"
+          inputMode="decimal"
+          placeholder={`Stake (${CHAIN.symbol})`}
+          value={stake}
+          onChange={(e) => setStake(e.target.value.trim())}
+        />
+        <button className="btn btn-primary" onClick={go} disabled={busy}>
+          {busy ? "Staking…" : "Accept & Stake"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export default function JobDetail({ job, entries, account, lastTask, onFund, onClose, onApprove, onReject, onClaim, onAccept, notify }) {
   if (!job) {
     return (
       <main className="container">
@@ -149,6 +190,7 @@ export default function JobDetail({ job, entries, account, lastTask, onFund, onC
 
   const earned = entries.reduce((a, e) => a + e.payout, 0n);
   const isClient = account && account.toLowerCase() === job.client.toLowerCase();
+  const isAgent = account && account.toLowerCase() === job.agent.toLowerCase();
   const status = agentStatus(job.active, lastTask);
 
   return (
@@ -228,6 +270,24 @@ export default function JobDetail({ job, entries, account, lastTask, onFund, onC
               {fmt(job.ratePerTask)} {CHAIN.symbol}
             </span>
           </div>
+          <div className="cell">
+            <span className="k">Agent stake</span>
+            <span className="vv">
+              {job.accepted ? `${fmt(job.stake)} ${CHAIN.symbol}` : "— not staked"}
+            </span>
+          </div>
+          <div className="cell">
+            <span className="k">Slash / reject</span>
+            <span className="vv">
+              {fmt(job.slashPerReject)} {CHAIN.symbol}
+            </span>
+          </div>
+          <div className="cell">
+            <span className="k">Agent status</span>
+            <span className="vv">
+              {job.accepted ? "🔒 staked & working" : "⏳ awaiting stake"}
+            </span>
+          </div>
         </div>
       </section>
 
@@ -243,6 +303,15 @@ export default function JobDetail({ job, entries, account, lastTask, onFund, onC
               <EarningsChart entries={entries} rate={job.ratePerTask} />
             )}
           </section>
+
+          {isAgent && job.active && !job.accepted && (
+            <AcceptStake
+              jobId={job.id}
+              slashPerReject={job.slashPerReject}
+              onAccept={onAccept}
+              notify={notify}
+            />
+          )}
 
           {isClient && job.active && (
             <ClientControls job={job} onFund={onFund} onClose={onClose} notify={notify} />

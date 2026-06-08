@@ -7,6 +7,7 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
   const [agent, setAgent] = useState("");
   const [rate, setRate] = useState("0.001");
   const [deposit, setDeposit] = useState("0.01");
+  const [slash, setSlash] = useState("0.002");
   const [spec, setSpec] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -61,7 +62,7 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
     }
     setBusy(true);
     try {
-      const receipt = await onCreate({ agent, rate, deposit, spec: spec.trim() });
+      const receipt = await onCreate({ agent, rate, deposit, slash, spec: spec.trim() });
       setSuccess(receipt.hash);
       setSpec("");
     } catch (err) {
@@ -148,6 +149,23 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
               onChange={(e) => setDeposit(e.target.value.trim())}
               disabled={disabled}
             />
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Slash per rejected task ({CHAIN.symbol})</label>
+          <input
+            className="mono"
+            type="text"
+            inputMode="decimal"
+            placeholder="0.002"
+            value={slash}
+            onChange={(e) => setSlash(e.target.value.trim())}
+            disabled={disabled}
+          />
+          <div className="field-hint">
+            Burned from the agent's stake on each task you reject. Set it above the
+            rate so submitting garbage is a net loss for the agent.
           </div>
         </div>
 

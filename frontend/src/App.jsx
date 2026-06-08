@@ -106,6 +106,9 @@ export default function App() {
             balance: j.balance,
             reserved: j.reserved,
             tasksPaid: Number(j.tasksPaid),
+            stake: j.stake,
+            slashPerReject: j.slashPerReject,
+            accepted: j.accepted,
             active: j.active,
             spec: j.spec,
             remaining: Number(remaining),
@@ -311,17 +314,34 @@ export default function App() {
   }, [ensureChain]);
 
   const createJob = useCallback(
-    async ({ agent, rate, deposit, spec }) => {
+    async ({ agent, rate, deposit, slash, spec }) => {
       const c = await getWriteContract();
-      const tx = await c.createJob(agent, ethers.parseEther(rate), spec, {
-        value: ethers.parseEther(deposit),
-      });
+      const tx = await c.createJob(
+        agent,
+        ethers.parseEther(rate),
+        ethers.parseEther(slash || "0"),
+        spec,
+        { value: ethers.parseEther(deposit) }
+      );
       const receipt = await tx.wait();
       await refreshJobs();
       if (account) refreshBalance(account);
       return receipt;
     },
     [getWriteContract, refreshJobs, refreshBalance, account]
+  );
+
+  // agent stakes to accept a job (V3)
+  const acceptJob = useCallback(
+    async (jobId, stake) => {
+      const c = await getWriteContract();
+      const tx = await c.acceptJob(jobId, { value: ethers.parseEther(stake) });
+      await tx.wait();
+      await refreshJobs();
+      if (account) refreshBalance(account);
+      notify("ok", `Staked ${stake} ${CHAIN.symbol} — job #${jobId} accepted`);
+    },
+    [getWriteContract, refreshJobs, refreshBalance, account, notify]
   );
 
   const fundJob = useCallback(
@@ -441,6 +461,7 @@ export default function App() {
           onApprove={approveTask}
           onReject={rejectTask}
           onClaim={claimTask}
+          onAccept={acceptJob}
           notify={notify}
         />
       )}

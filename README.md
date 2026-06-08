@@ -52,29 +52,41 @@ The brief says *"Build with Dappit, or bring your own EVM tooling."* AgentPay do
 | RPC | `https://liteforge.rpc.caldera.xyz/http` |
 | Explorer | `https://liteforge.explorer.caldera.xyz` |
 | Faucet | `https://liteforge.hub.caldera.xyz` |
-| Contract (V2, optimistic) | [`0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191`](https://liteforge.explorer.caldera.xyz/address/0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191) |
-| Contract (V1, instant-pay) | [`0xDea6Da93265871d828B20cace2BADd5F5e70209d`](https://liteforge.explorer.caldera.xyz/address/0xDea6Da93265871d828B20cace2BADd5F5e70209d) |
+| Contract (V3 · optimistic + stake/slash) | [`0x6ba4f758929322521075b84AE590C83b144E4F97`](https://liteforge.explorer.caldera.xyz/address/0x6ba4f758929322521075b84AE590C83b144E4F97) |
+| Contract (V2 · optimistic) | [`0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191`](https://liteforge.explorer.caldera.xyz/address/0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191) |
+| Contract (V1 · instant-pay) | [`0xDea6Da93265871d828B20cace2BADd5F5e70209d`](https://liteforge.explorer.caldera.xyz/address/0xDea6Da93265871d828B20cace2BADd5F5e70209d) |
 
-## Trust model — optimistic escrow (V2)
+## Trust model — optimistic escrow + stake & slashing (V3, live)
 
-V1 paid the agent the instant it submitted any hash, so a lazy/malicious agent
-could drain escrow doing zero real work ("proof-of-work" was unenforced). **V2
-(`AgentEscrowV2`) fixes this with an optimistic model** borrowed from Upwork
-(acceptance), optimistic rollups (challenge window) and staked oracles:
+The economic story evolved through an adversarial self-audit:
+
+- **V1** paid the agent the instant it submitted *any* hash → a lazy/malicious
+  agent could drain escrow doing zero work. "Proof-of-work" was unenforced.
+- **V2** made payment *optimistic* — submit reserves, the client can approve or
+  reject within a dispute window, and the agent claims if the client stays
+  silent. Fixes pay-for-nothing, client-bears-all-risk, and close-front-running.
+- **V3 (live)** adds **skin in the game**: the agent locks a **stake** to accept
+  a job, and every task the client **rejects burns `slashPerReject` from that
+  stake**. The slash is burned (not paid to the client) so the client can't farm
+  false rejections. Now garbage work is **-EV** for the agent.
 
 ```
-submitTask()  → records the deliverable + RESERVES the payout (no money moves)
-approveTask() → client accepts → agent paid immediately
-rejectTask()  → client rejects bad work → escrow returned, agent unpaid
-claimTask()   → client silent past the dispute window → agent claims (optimistic)
+acceptJob()   → agent locks a STAKE to take the job
+submitTask()  → records deliverable + RESERVES the payout (no money moves)
+approveTask() → client accepts → agent paid
+rejectTask()  → escrow returned to client AND slashPerReject BURNED from stake
+claimTask()   → client silent past the dispute window → agent claims
+withdrawStake() → agent reclaims remaining stake (no pending tasks)
 ```
 
-A per-job **cooldown** blocks mempool-spam draining, and `closeJob` can only
-reclaim *free* (unreserved) escrow — so a client can't rug a pending agent, and
-an agent can't front-run a close. This closes the worst conceptual holes: pay-
-for-nothing, client-bears-all-risk, and close-job front-running. Run
-`node scripts/verify-concept.js` to check the economic invariants on-chain, and
-`agent/agent-v2.js` is the V2 worker (submit → claim-after-window).
+This is the same trio real systems use to answer "did the work happen?":
+acceptance (Upwork), challenge window (optimistic rollups), staked collateral
+(oracles). A neutral arbiter/oracle for the residual "who judges quality"
+question is the documented next step.
+
+**Tests:** 68 passing (V1 + V2 optimistic + V3 stake/slash incl. reentrancy and
+"garbage spam is -EV"). `node scripts/verify-concept.js` checks the economic
+invariants on-chain; `agent/agent-v2.js` is the optimistic worker.
 
 ## Quickstart
 
