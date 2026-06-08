@@ -7,3 +7,4 @@ artifacts/
 coverage/
 typechain-types/
 scripts/.seed-agents-v3.json
+scripts/.seed-agents-v4.json

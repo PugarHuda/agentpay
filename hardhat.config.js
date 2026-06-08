@@ -7,6 +7,7 @@ module.exports = {
     version: "0.8.24",
     settings: {
       optimizer: { enabled: true, runs: 200 },
+      viaIR: true, // V4's large Job struct getter overflows the stack without IR
     },
   },
   networks: {

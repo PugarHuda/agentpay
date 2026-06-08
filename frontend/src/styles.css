@@ -1038,6 +1038,18 @@ textarea:disabled {
   background: var(--red);
   color: var(--white);
 }
+.task-badge.proposed {
+  background: var(--amber, #f5b94a);
+}
+.task-badge.disputed {
+  background: var(--purple);
+}
+.entry.task-disputed::before {
+  background: var(--purple);
+}
+.entry.task-proposed::before {
+  background: var(--amber, #f5b94a);
+}
 .entry.task-rejected {
   opacity: 0.7;
 }

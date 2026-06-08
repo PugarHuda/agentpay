@@ -5,6 +5,7 @@ import { errMsg, shortHash } from "../lib.js";
 
 export default function HireForm({ disabled, account, onConnect, onCreate }) {
   const [agent, setAgent] = useState("");
+  const [arbiter, setArbiter] = useState("");
   const [rate, setRate] = useState("0.001");
   const [deposit, setDeposit] = useState("0.01");
   const [slash, setSlash] = useState("0.002");
@@ -35,6 +36,7 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
 
   const validate = () => {
     if (!ethers.isAddress(agent)) return "Enter a valid agent address";
+    if (!ethers.isAddress(arbiter)) return "Enter a valid neutral arbiter address";
     let r, d;
     try {
       r = ethers.parseEther(rate || "0");
@@ -72,7 +74,7 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
     }
     setBusy(true);
     try {
-      const receipt = await onCreate({ agent, rate, deposit, slash, minStake, spec: spec.trim() });
+      const receipt = await onCreate({ agent, arbiter, rate, deposit, slash, minStake, spec: spec.trim() });
       setSuccess(receipt.hash);
       setSpec("");
     } catch (err) {
@@ -110,6 +112,25 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
             <button type="button" className="link-btn" onClick={genWallet}>
               🎲 Generate agent wallet
             </button>
+          </div>
+        </div>
+
+        <div className="field">
+          <label>⚖️ Arbiter address (neutral)</label>
+          <input
+            className="mono"
+            type="text"
+            placeholder="0x…"
+            value={arbiter}
+            onChange={(e) => setArbiter(e.target.value.trim())}
+            spellCheck={false}
+            disabled={disabled}
+          />
+          <div className="field-hint">
+            A neutral third party both sides trust to resolve disputes. If the
+            client wrongly rejects good work, the agent escalates here — the
+            arbiter can overturn it so the agent is paid. (In production: a
+            decentralized court / oracle committee.)
           </div>
         </div>
 

@@ -1,16 +1,20 @@
 import { useState } from "react";
-import { CHAIN } from "../config.js";
+import { CHAIN, DISPUTE_WINDOW } from "../config.js";
 import { agentStatus, errMsg, fmt, short, shortHash, timeAgo } from "../lib.js";
 
-const STATUS = { 0: "Pending", 1: "Paid", 2: "Rejected" };
+const STATUS = { 0: "Pending", 1: "Paid", 2: "Rejected ⚠", 3: "In dispute", 4: "Rejected" };
 
-function TaskRow({ jobId, t, isClient, account, onApprove, onReject, onClaim, notify }) {
+function TaskRow({ jobId, t, job, isClient, isArbiter, account, disputeWindow, onApprove, onReject, onClaim, onDispute, onResolve, onFinalize, notify }) {
   const [busy, setBusy] = useState(null);
   const nowSec = Math.floor(Date.now() / 1000);
   const isAgent = account && account.toLowerCase() === t.agent.toLowerCase();
   const claimable = t.status === 0 && nowSec >= t.claimableAt;
   const secsLeft = Math.max(0, t.claimableAt - nowSec);
-  const statusKey = t.status === 1 ? "paid" : t.status === 2 ? "rejected" : "pending";
+  // RejectedProposed window: agent can dispute / anyone can finalize after it
+  const rejSecsLeft = Math.max(0, t.rejectedAt + disputeWindow - nowSec);
+  const canFinalize = t.status === 2 && rejSecsLeft === 0;
+  const statusKey =
+    t.status === 1 ? "paid" : t.status === 4 ? "rejected" : t.status === 3 ? "disputed" : t.status === 2 ? "proposed" : "pending";
 
   const run = async (fn, kind) => {
     setBusy(kind);
@@ -50,37 +54,63 @@ function TaskRow({ jobId, t, isClient, account, onApprove, onReject, onClaim, no
         )}
       </div>
 
+      {/* Pending: client approves/rejects, agent claims after window */}
       {t.status === 0 && (
         <div className="task-actions">
           {isClient && (
             <>
-              <button
-                className="btn btn-primary task-btn"
-                disabled={busy !== null}
-                onClick={() => run(() => onApprove(jobId, t.id), "approve")}
-              >
+              <button className="btn btn-primary task-btn" disabled={busy !== null} onClick={() => run(() => onApprove(jobId, t.id), "approve")}>
                 {busy === "approve" ? "Approving…" : "Approve & pay"}
               </button>
-              <button
-                className="btn btn-danger task-btn"
-                disabled={busy !== null}
-                onClick={() => run(() => onReject(jobId, t.id, "rejected by client"), "reject")}
-              >
+              <button className="btn btn-danger task-btn" disabled={busy !== null} onClick={() => run(() => onReject(jobId, t.id, "rejected by client"), "reject")}>
                 {busy === "reject" ? "Rejecting…" : "Reject"}
               </button>
             </>
           )}
           {isAgent && (
-            <button
-              className="btn btn-blue task-btn"
-              disabled={busy !== null || !claimable}
-              onClick={() => run(() => onClaim(jobId, t.id), "claim")}
-              title={claimable ? "" : `Claimable after the dispute window (${secsLeft}s left)`}
-            >
+            <button className="btn btn-blue task-btn" disabled={busy !== null || !claimable} onClick={() => run(() => onClaim(jobId, t.id), "claim")} title={claimable ? "" : `Claimable after the dispute window (${secsLeft}s left)`}>
               {busy === "claim" ? "Claiming…" : claimable ? "Claim payout" : `Claim in ${secsLeft}s`}
             </button>
           )}
           {!isClient && !isAgent && <span className="task-await">awaiting client review</span>}
+        </div>
+      )}
+
+      {/* RejectedProposed: agent disputes (within window) or anyone finalizes (after) */}
+      {t.status === 2 && (
+        <div className="task-actions">
+          {isAgent && !canFinalize && (
+            <button className="btn btn-blue task-btn" disabled={busy !== null} onClick={() => run(() => onDispute(jobId, t.id), "dispute")}>
+              {busy === "dispute" ? "Disputing…" : `⚖️ Dispute (${rejSecsLeft}s left)`}
+            </button>
+          )}
+          {canFinalize && (
+            <button className="btn btn-ghost task-btn" disabled={busy !== null} onClick={() => run(() => onFinalize(jobId, t.id), "finalize")}>
+              {busy === "finalize" ? "Finalizing…" : "Finalize rejection (slash)"}
+            </button>
+          )}
+          {!isAgent && !canFinalize && (
+            <span className="task-await">rejected — agent may dispute ({rejSecsLeft}s)</span>
+          )}
+        </div>
+      )}
+
+      {/* Disputed: only the neutral arbiter resolves */}
+      {t.status === 3 && (
+        <div className="task-actions">
+          {isArbiter ? (
+            <>
+              <span className="task-await" style={{ width: "100%" }}>⚖️ You are the arbiter — rule on this dispute:</span>
+              <button className="btn btn-primary task-btn" disabled={busy !== null} onClick={() => run(() => onResolve(jobId, t.id, true), "ruleAgent")}>
+                {busy === "ruleAgent" ? "…" : "Rule for agent (pay)"}
+              </button>
+              <button className="btn btn-danger task-btn" disabled={busy !== null} onClick={() => run(() => onResolve(jobId, t.id, false), "ruleClient")}>
+                {busy === "ruleClient" ? "…" : "Rule for client (slash)"}
+              </button>
+            </>
+          ) : (
+            <span className="task-await">⚖️ in dispute — awaiting the neutral arbiter</span>
+          )}
         </div>
       )}
     </li>
@@ -172,7 +202,7 @@ function AcceptStake({ jobId, minStake, onAccept, notify }) {
   );
 }
 
-export default function JobDetail({ job, entries, account, lastTask, onFund, onClose, onApprove, onReject, onClaim, onAccept, notify }) {
+export default function JobDetail({ job, entries, account, lastTask, onFund, onClose, onApprove, onReject, onClaim, onAccept, onDispute, onResolve, onFinalize, notify }) {
   if (!job) {
     return (
       <main className="container">
@@ -192,6 +222,7 @@ export default function JobDetail({ job, entries, account, lastTask, onFund, onC
   const earned = entries.reduce((a, e) => a + e.payout, 0n);
   const isClient = account && account.toLowerCase() === job.client.toLowerCase();
   const isAgent = account && account.toLowerCase() === job.agent.toLowerCase();
+  const isArbiter = account && account.toLowerCase() === job.arbiter.toLowerCase();
   const status = agentStatus(job.active, lastTask);
 
   return (
@@ -289,6 +320,18 @@ export default function JobDetail({ job, entries, account, lastTask, onFund, onC
               {job.accepted ? "🔒 staked & working" : "⏳ awaiting stake"}
             </span>
           </div>
+          <div className="cell">
+            <span className="k">⚖️ Arbiter</span>
+            <a
+              className="vv"
+              href={`${CHAIN.explorer}/address/${job.arbiter}`}
+              target="_blank"
+              rel="noreferrer"
+              title={job.arbiter}
+            >
+              {short(job.arbiter)} ↗
+            </a>
+          </div>
         </div>
       </section>
 
@@ -345,11 +388,17 @@ export default function JobDetail({ job, entries, account, lastTask, onFund, onC
                       key={t.id}
                       jobId={job.id}
                       t={t}
+                      job={job}
                       isClient={isClient}
+                      isArbiter={isArbiter}
                       account={account}
+                      disputeWindow={DISPUTE_WINDOW}
                       onApprove={onApprove}
                       onReject={onReject}
                       onClaim={onClaim}
+                      onDispute={onDispute}
+                      onResolve={onResolve}
+                      onFinalize={onFinalize}
                       notify={notify}
                     />
                   ))}

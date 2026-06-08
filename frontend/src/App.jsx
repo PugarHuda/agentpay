@@ -102,6 +102,7 @@ export default function App() {
             id: i,
             client: j.client,
             agent: j.agent,
+            arbiter: j.arbiter,
             ratePerTask: j.ratePerTask,
             balance: j.balance,
             reserved: j.reserved,
@@ -315,10 +316,11 @@ export default function App() {
   }, [ensureChain]);
 
   const createJob = useCallback(
-    async ({ agent, rate, deposit, slash, minStake, spec }) => {
+    async ({ agent, arbiter, rate, deposit, slash, minStake, spec }) => {
       const c = await getWriteContract();
       const tx = await c.createJob(
         agent,
+        arbiter,
         ethers.parseEther(rate),
         ethers.parseEther(slash || "0"),
         ethers.parseEther(minStake || slash || "0"),
@@ -407,6 +409,37 @@ export default function App() {
     [getWriteContract, refreshJobs, loadFeed, refreshBalance, account, notify]
   );
 
+  // ---- V4 arbitration ----
+  const disputeRejection = useCallback(
+    async (jobId, taskId) => {
+      const c = await getWriteContract();
+      await (await c.disputeRejection(jobId, taskId)).wait();
+      await refreshJobs();
+      notify("ok", `Disputed rejection of task #${taskId} — escalated to the arbiter`);
+    },
+    [getWriteContract, refreshJobs, notify]
+  );
+
+  const resolveDispute = useCallback(
+    async (jobId, taskId, agentWon) => {
+      const c = await getWriteContract();
+      await (await c.resolveDispute(jobId, taskId, agentWon)).wait();
+      await Promise.all([refreshJobs(), loadFeed()]);
+      notify("ok", `Dispute resolved ${agentWon ? "for the agent (paid)" : "for the client (slashed)"}`);
+    },
+    [getWriteContract, refreshJobs, loadFeed, notify]
+  );
+
+  const finalizeRejection = useCallback(
+    async (jobId, taskId) => {
+      const c = await getWriteContract();
+      await (await c.finalizeRejection(jobId, taskId)).wait();
+      await refreshJobs();
+      notify("ok", `Rejection of task #${taskId} finalized — slash applied`);
+    },
+    [getWriteContract, refreshJobs, notify]
+  );
+
   // ---- derived stats ----
   const totalJobs = jobs.length;
   const totalTasks = feed.length;
@@ -464,6 +497,9 @@ export default function App() {
           onReject={rejectTask}
           onClaim={claimTask}
           onAccept={acceptJob}
+          onDispute={disputeRejection}
+          onResolve={resolveDispute}
+          onFinalize={finalizeRejection}
           notify={notify}
         />
       )}

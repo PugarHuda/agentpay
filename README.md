@@ -52,6 +52,7 @@ The brief says *"Build with Dappit, or bring your own EVM tooling."* AgentPay do
 | RPC | `https://liteforge.rpc.caldera.xyz/http` |
 | Explorer | `https://liteforge.explorer.caldera.xyz` |
 | Faucet | `https://liteforge.hub.caldera.xyz` |
+| Contract (V4 · + neutral arbitration) | [`0xB03b27Eb3Cb66Bf3a1104b0521671d946AcBd143`](https://liteforge.explorer.caldera.xyz/address/0xB03b27Eb3Cb66Bf3a1104b0521671d946AcBd143) |
 | Contract (V3 · optimistic + stake/slash) | [`0x7ECD0AEFCF141464776C09b78735a72aE9ED748a`](https://liteforge.explorer.caldera.xyz/address/0x7ECD0AEFCF141464776C09b78735a72aE9ED748a) |
 | Contract (V2 · optimistic) | [`0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191`](https://liteforge.explorer.caldera.xyz/address/0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191) |
 | Contract (V1 · instant-pay) | [`0xDea6Da93265871d828B20cace2BADd5F5e70209d`](https://liteforge.explorer.caldera.xyz/address/0xDea6Da93265871d828B20cace2BADd5F5e70209d) |
@@ -90,10 +91,29 @@ required **`minStake` (≥ `slashPerReject` > 0)** at `createJob`, enforced in
 `acceptJob` — slashing now always has teeth. (`pendingCount` also replaced an
 O(n) task scan.)
 
-**Tests:** 71 passing (V1 + V2 optimistic + V3 stake/slash incl. reentrancy,
-"garbage spam is -EV", and the dust-stake attack). `node scripts/qa-v3.js` and
-`node scripts/verify-concept.js` check the economic invariants on-chain;
-`agent/agent-v2.js` is the optimistic worker.
+- **V4 (live)** closes the last hole the audits surfaced: **the client was the
+  sole judge of quality**, so a malicious client could reject good work, reclaim
+  the escrow, and burn an honest agent's stake. V4 adds a **neutral arbiter**
+  both sides agree to up front (the client names it at `createJob`; the agent
+  consents by staking to accept). Rejection becomes a *proposal*:
+
+```
+rejectTask()       → PROPOSES a rejection (funds held, nothing slashed yet)
+disputeRejection() → agent escalates to the neutral arbiter
+resolveDispute()   → arbiter rules: agent wins → paid, no slash;
+                     client wins → slash + refund
+finalizeRejection()→ agent didn't dispute in time → rejection stands (slash)
+```
+
+  So a **false rejection no longer pays the client**: the agent disputes, the
+  arbiter overturns it, and the agent is paid with stake intact (proven on-chain
+  in `scripts/seed-v4.js`). In production the arbiter would be a decentralized
+  court / oracle committee (e.g. Kleros).
+
+**Tests:** 84 passing (V1 + V2 optimistic + V3 stake/slash + V4 arbitration, incl.
+reentrancy, "garbage spam is -EV", the dust-stake attack, and "arbiter overturns
+a false rejection"). `node scripts/qa-v3.js` / `verify-concept.js` check the
+economic invariants on-chain.
 
 ## Quickstart
 
