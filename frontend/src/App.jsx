@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ethers } from "ethers";
-import { CHAIN, ESCROW_ADDRESS, DEPLOY_BLOCK } from "./config.js";
+import { CHAIN, ESCROW_ADDRESS, DEPLOY_BLOCK, REGISTRY_ADDRESS } from "./config.js";
 import { ESCROW_ABI } from "./abi.js";
+import { REGISTRY_ABI } from "./registryAbi.js";
+import Agents from "./components/Agents.jsx";
 import { errMsg, fmt, short } from "./lib.js";
 import Nav from "./components/Nav.jsx";
 import Stats from "./components/Stats.jsx";
@@ -17,9 +19,12 @@ function parseRoute() {
   const h = window.location.hash || "";
   const job = h.match(/^#\/job\/(\d+)/);
   if (job) return { name: "job", id: Number(job[1]) };
+  const hireWith = h.match(/^#\/hire\/(0x[0-9a-fA-F]{40})/);
+  if (hireWith) return { name: "hire", prefillAgent: hireWith[1] };
   if (h.startsWith("#/dashboard")) return { name: "dashboard" };
   if (h.startsWith("#/hire")) return { name: "hire" };
   if (h.startsWith("#/jobs")) return { name: "jobs" };
+  if (h.startsWith("#/agents")) return { name: "agents" };
   if (h.startsWith("#/activity")) return { name: "activity" };
   return { name: "landing" };
 }
@@ -55,11 +60,21 @@ export default function App() {
     }
   }, []);
 
+  const registry = useMemo(
+    () =>
+      REGISTRY_ADDRESS
+        ? new ethers.Contract(REGISTRY_ADDRESS, REGISTRY_ABI, readProvider)
+        : null,
+    [readProvider]
+  );
+
   // ---- state ----
   const [account, setAccount] = useState(null);
   const [balance, setBalance] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [feed, setFeed] = useState([]);
+  const [registryAgents, setRegistryAgents] = useState([]);
+  const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(Boolean(contract));
   const [toast, setToast] = useState(null); // { kind: "err" | "ok", text }
   const [route, setRoute] = useState(parseRoute());
@@ -199,23 +214,50 @@ export default function App() {
     }
   }, [contract, logToEntry]);
 
+  // marketplace registry profiles + dispute outcomes (for the Agents page)
+  const loadAgents = useCallback(async () => {
+    try {
+      if (registry) {
+        const [addrs, profs] = await registry.getAgents(0, 200);
+        setRegistryAgents(
+          addrs.map((a, i) => ({
+            addr: a,
+            name: profs[i].name,
+            bio: profs[i].bio,
+            capabilities: profs[i].capabilities,
+            suggestedRate: profs[i].suggestedRate,
+            active: profs[i].active,
+            since: Number(profs[i].since),
+          }))
+        );
+      }
+      if (contract) {
+        const ev = await contract.queryFilter(contract.filters.DisputeResolved(), DEPLOY_BLOCK, "latest");
+        setDisputes(ev.map((e) => ({ jobId: Number(e.args.jobId), agentWon: e.args.agentWon })));
+      }
+    } catch (e) {
+      console.error("loadAgents failed", e);
+    }
+  }, [registry, contract]);
+
   // initial load + periodic refresh
   useEffect(() => {
     if (!contract) return;
     let alive = true;
     (async () => {
-      await Promise.all([refreshJobs(), loadFeed()]);
+      await Promise.all([refreshJobs(), loadFeed(), loadAgents()]);
       if (alive) setLoading(false);
     })();
     const t = setInterval(() => {
       refreshJobs();
       loadFeed();
+      loadAgents();
     }, 15000);
     return () => {
       alive = false;
       clearInterval(t);
     };
-  }, [contract, refreshJobs, loadFeed]);
+  }, [contract, refreshJobs, loadFeed, loadAgents]);
 
   // ---- LIVE listener: TaskPaid via WebSocket eth_subscribe (instant),
   //      falling back to the HTTP polling contract if the socket is unavailable ----
@@ -594,10 +636,24 @@ export default function App() {
             <HireForm
               disabled={!ESCROW_ADDRESS}
               account={account}
+              prefillAgent={route.prefillAgent}
               onConnect={connect}
               onCreate={createJob}
             />
           </div>
+        </main>
+      )}
+
+      {route.name === "agents" && (
+        <main className="container page">
+          <h1 className="page-title">🧑‍💻 Agents Marketplace</h1>
+          <Agents
+            agents={registryAgents}
+            feed={feed}
+            jobs={jobs}
+            disputes={disputes}
+            loading={loading}
+          />
         </main>
       )}
 

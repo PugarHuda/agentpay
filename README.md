@@ -22,6 +22,22 @@ The brief says *"Build with Dappit, or bring your own EVM tooling."* AgentPay do
 - **Own EVM tooling** (ethers v6 / Hardhat) → `AgentEscrow` native zkLTC wages + the autonomous agent.
 - **Dappit (no-code)** → the **APAY reward token** is deployed via [dappit.io](https://dappit.io), then escrowed by `AgentEscrowERC20` so agents can also be paid in APAY. See [`DAPPIT.md`](./DAPPIT.md).
 
+## Deep LiteForge integration
+
+- **Real ecosystem analytics** — agents pull live data from the LiteForge
+  Blockscout indexer (total/today tx, gas tiers, network utilization, recent
+  blocks) and produce reports with concrete numbers, not generic text
+  (`agent/agent-v4.js`).
+- **WebSocket real-time** — the dashboard subscribes to `TaskPaid` over
+  `wss://liteforge.rpc.caldera.xyz/ws` (`eth_subscribe`) for instant on-chain
+  events, with HTTP polling as a backstop.
+- **Agent marketplace + on-chain reputation** — `AgentRegistry` lets agents list
+  a profile (name, bio, capabilities, rate); the **Agents** page ranks them by a
+  reputation computed live from escrow history (tasks paid, earnings, disputes
+  won/lost). Clients hire proven agents straight from the catalog.
+- **Verified contracts + zkLTC native** — every contract is verified on
+  Blockscout; escrow, payouts, stake and slashing are all native zkLTC.
+
 ## Why it matters for Hard Money Web3
 
 - **New demand for LTC** — every agent wage is paid in zkLTC, 1:1 backed by LTC.
@@ -52,7 +68,8 @@ The brief says *"Build with Dappit, or bring your own EVM tooling."* AgentPay do
 | RPC | `https://liteforge.rpc.caldera.xyz/http` |
 | Explorer | `https://liteforge.explorer.caldera.xyz` |
 | Faucet | `https://liteforge.hub.caldera.xyz` |
-| Contract (V4 · + neutral arbitration) | [`0xB03b27Eb3Cb66Bf3a1104b0521671d946AcBd143`](https://liteforge.explorer.caldera.xyz/address/0xB03b27Eb3Cb66Bf3a1104b0521671d946AcBd143) |
+| Contract (V4 · + neutral arbitration) | [`0x95D0e3c0250d9B4839bB3F7881740b7e6bb0f50D`](https://liteforge.explorer.caldera.xyz/address/0x95D0e3c0250d9B4839bB3F7881740b7e6bb0f50D) |
+| AgentRegistry (marketplace) | [`0x2aE3A667Aa70D23a365eB8310656d06B7c30183E`](https://liteforge.explorer.caldera.xyz/address/0x2aE3A667Aa70D23a365eB8310656d06B7c30183E) |
 | Contract (V3 · optimistic + stake/slash) | [`0x7ECD0AEFCF141464776C09b78735a72aE9ED748a`](https://liteforge.explorer.caldera.xyz/address/0x7ECD0AEFCF141464776C09b78735a72aE9ED748a) |
 | Contract (V2 · optimistic) | [`0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191`](https://liteforge.explorer.caldera.xyz/address/0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191) |
 | Contract (V1 · instant-pay) | [`0xDea6Da93265871d828B20cace2BADd5F5e70209d`](https://liteforge.explorer.caldera.xyz/address/0xDea6Da93265871d828B20cace2BADd5F5e70209d) |

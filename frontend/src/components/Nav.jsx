@@ -4,6 +4,7 @@ import { fmt, short } from "../lib.js";
 const TABS = [
   { key: "dashboard", label: "Dashboard", href: "#/dashboard" },
   { key: "hire", label: "Hire", href: "#/hire" },
+  { key: "agents", label: "Agents", href: "#/agents" },
   { key: "jobs", label: "Jobs", href: "#/jobs" },
   { key: "activity", label: "Activity", href: "#/activity" },
 ];

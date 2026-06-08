@@ -3,8 +3,8 @@ import { ethers } from "ethers";
 import { CHAIN } from "../config.js";
 import { errMsg, shortHash } from "../lib.js";
 
-export default function HireForm({ disabled, account, onConnect, onCreate }) {
-  const [agent, setAgent] = useState("");
+export default function HireForm({ disabled, account, prefillAgent, onConnect, onCreate }) {
+  const [agent, setAgent] = useState(prefillAgent || "");
   const [arbiter, setArbiter] = useState("");
   const [rate, setRate] = useState("0.001");
   const [deposit, setDeposit] = useState("0.01");

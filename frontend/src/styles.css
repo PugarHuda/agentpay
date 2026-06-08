@@ -1188,6 +1188,115 @@ textarea:disabled {
   }
 }
 
+/* ===================== agents marketplace ===================== */
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (max-width: 720px) {
+  .agent-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.agent-card {
+  background: var(--paper);
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.agent-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow);
+}
+.agent-top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.agent-rank {
+  font-family: var(--display);
+  font-size: 13px;
+  background: var(--yellow);
+  border: var(--border-2);
+  padding: 1px 8px;
+}
+.agent-name {
+  font-family: var(--display);
+  font-size: 17px;
+}
+.agent-bio {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+.agent-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--blue);
+  border: var(--border-2);
+  padding: 1px 8px;
+}
+.agent-rep {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  border-top: var(--border-2);
+  border-bottom: var(--border-2);
+  padding: 12px 0;
+}
+@media (max-width: 460px) {
+  .agent-rep {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.rep {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rep-v {
+  font-size: 16px;
+  font-weight: 700;
+}
+.rep-k {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+.agent-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.agent-addr {
+  font-size: 12px;
+  font-weight: 700;
+}
+.agent-rate {
+  font-size: 12px;
+  opacity: 0.7;
+}
+.agent-hire {
+  margin-left: auto;
+  padding: 7px 14px;
+  font-size: 13px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
 /* ===================== job detail page ===================== */
 .detail-back {
   padding: 24px 0 4px;

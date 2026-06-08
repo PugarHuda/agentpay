@@ -22,6 +22,10 @@ function cleanAddress(raw) {
 }
 export const ESCROW_ADDRESS = cleanAddress(import.meta.env.VITE_ESCROW_ADDRESS);
 
+// Agent marketplace registry (optional; the Agents page degrades gracefully if unset)
+export const REGISTRY_ADDRESS = cleanAddress(import.meta.env.VITE_REGISTRY_ADDRESS) ||
+  "0x2aE3A667Aa70D23a365eB8310656d06B7c30183E";
+
 // Scanning logs from genesis times out on the public RPC (16.9M+ blocks),
 // so event queries start at the V3 contract's deployment block.
 export const DEPLOY_BLOCK = Number(import.meta.env.VITE_DEPLOY_BLOCK || 16941954);
