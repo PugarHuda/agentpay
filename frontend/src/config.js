@@ -5,6 +5,7 @@ export const CHAIN = {
   name: "LitVM LiteForge",
   symbol: "zkLTC",
   rpc: "https://liteforge.rpc.caldera.xyz/http",
+  wss: "wss://liteforge.rpc.caldera.xyz/ws",
   explorer: "https://liteforge.explorer.caldera.xyz",
   faucet: "https://liteforge.hub.caldera.xyz",
 };

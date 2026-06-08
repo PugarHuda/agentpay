@@ -43,6 +43,18 @@ export default function App() {
     [readProvider]
   );
 
+  // ---- WebSocket provider: real-time on-chain events via eth_subscribe ----
+  // (HTTP polling above still backstops reads if the socket drops)
+  const wsContract = useMemo(() => {
+    if (!ESCROW_ADDRESS || !CHAIN.wss) return null;
+    try {
+      const wsp = new ethers.WebSocketProvider(CHAIN.wss, CHAIN.id);
+      return new ethers.Contract(ESCROW_ADDRESS, ESCROW_ABI, wsp);
+    } catch {
+      return null; // fall back to the HTTP polling listener
+    }
+  }, []);
+
   // ---- state ----
   const [account, setAccount] = useState(null);
   const [balance, setBalance] = useState(null);
@@ -205,9 +217,11 @@ export default function App() {
     };
   }, [contract, refreshJobs, loadFeed]);
 
-  // ---- LIVE listener: TaskCompleted over polling JSON-RPC ----
+  // ---- LIVE listener: TaskPaid via WebSocket eth_subscribe (instant),
+  //      falling back to the HTTP polling contract if the socket is unavailable ----
   useEffect(() => {
-    if (!contract) return;
+    const live = wsContract || contract;
+    if (!live) return;
     const handler = async (...args) => {
       const event = args[args.length - 1];
       try {
@@ -228,12 +242,12 @@ export default function App() {
         console.error("live event failed", e);
       }
     };
-    contract.on("TaskPaid", handler);
+    live.on("TaskPaid", handler);
     return () => {
-      contract.off("TaskPaid", handler);
+      live.off("TaskPaid", handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contract, logToEntry, refreshJobs, account]);
+  }, [wsContract, contract, logToEntry, refreshJobs, account]);
 
   // ---- wallet ----
   const refreshBalance = useCallback(
