@@ -130,8 +130,8 @@ function EarningsChart({ entries, rate }) {
   );
 }
 
-function AcceptStake({ jobId, slashPerReject, onAccept, notify }) {
-  const suggested = slashPerReject > 0n ? fmt(slashPerReject * 2n) : "0.002";
+function AcceptStake({ jobId, minStake, onAccept, notify }) {
+  const suggested = minStake > 0n ? fmt(minStake) : "0.004";
   const [stake, setStake] = useState(suggested);
   const [busy, setBusy] = useState(false);
   const go = async () => {
@@ -151,8 +151,9 @@ function AcceptStake({ jobId, slashPerReject, onAccept, notify }) {
         <h2 className="ptitle">🔒 Accept & stake</h2>
       </div>
       <p className="psub">
-        You're this job's agent. Lock a stake to start working — it's slashed
-        (burned) if the client rejects your work, so honest work pays.
+        You're this job's agent. Lock at least the minimum stake to start working
+        — it's slashed (burned) if the client rejects your work, so honest work
+        pays. Minimum: <strong>{fmt(minStake)} {CHAIN.symbol}</strong>.
       </p>
       <div className="job-actions" style={{ borderTop: "none", paddingTop: 0, marginTop: 0 }}>
         <input
@@ -307,7 +308,7 @@ export default function JobDetail({ job, entries, account, lastTask, onFund, onC
           {isAgent && job.active && !job.accepted && (
             <AcceptStake
               jobId={job.id}
-              slashPerReject={job.slashPerReject}
+              minStake={job.minStake}
               onAccept={onAccept}
               notify={notify}
             />

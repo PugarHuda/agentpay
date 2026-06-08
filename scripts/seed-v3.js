@@ -20,14 +20,14 @@ const ABI = [
   "function disputeWindow() view returns (uint64)",
   "function nextJobId() view returns (uint256)",
   "function totalBurned() view returns (uint256)",
-  "function createJob(address agent, uint256 ratePerTask, uint256 slashPerReject, string spec) payable returns (uint256)",
+  "function createJob(address agent, uint256 ratePerTask, uint256 slashPerReject, uint256 minStake, string spec) payable returns (uint256)",
   "function acceptJob(uint256 jobId) payable",
   "function submitTask(uint256 jobId, bytes32 workHash, string summary) returns (uint256)",
   "function approveTask(uint256 jobId, uint256 taskId)",
   "function rejectTask(uint256 jobId, uint256 taskId, string reason)",
   "function claimTask(uint256 jobId, uint256 taskId)",
   "function isClaimable(uint256, uint256) view returns (bool)",
-  "event JobCreated(uint256 indexed jobId, address indexed client, address indexed agent, uint256 ratePerTask, uint256 deposit, uint256 slashPerReject, string spec)",
+  "event JobCreated(uint256 indexed jobId, address indexed client, address indexed agent, uint256 ratePerTask, uint256 deposit, uint256 slashPerReject, uint256 minStake, string spec)",
   "event TaskSubmitted(uint256 indexed jobId, uint256 indexed taskId, address indexed agent, uint256 payout, bytes32 workHash, string summary, uint64 claimableAt)",
 ];
 
@@ -76,8 +76,8 @@ async function main() {
     await (await client.sendTransaction({ to: w.address, value })).wait();
     return w;
   };
-  const createJob = async (agent, rate, slash, deposit, spec) => {
-    const rc = await (await escrow.createJob(agent.address, ethers.parseEther(rate), ethers.parseEther(slash), spec, { value: ethers.parseEther(deposit) })).wait();
+  const createJob = async (agent, rate, slash, minStake, deposit, spec) => {
+    const rc = await (await escrow.createJob(agent.address, ethers.parseEther(rate), ethers.parseEther(slash), ethers.parseEther(minStake), spec, { value: ethers.parseEther(deposit) })).wait();
     const ev = rc.logs.map((l) => { try { return escrow.interface.parseLog(l); } catch { return null; } }).find((e) => e && e.name === "JobCreated");
     console.log(`job #${Number(ev.args.jobId)} created (${spec.split(":")[0]}, slash ${slash})`);
     return Number(ev.args.jobId);
@@ -87,7 +87,7 @@ async function main() {
   console.log(`\n=== TrendScout (stake → claim + pending) ===`);
   const tsAgent = await mkAgent("TrendScout", "0.002");
   const tsSpec = "TrendScout: surface notable LiteForge on-chain trends for builders";
-  const tsJob = await createJob(tsAgent, "0.0003", "0.0006", "0.0012", tsSpec);
+  const tsJob = await createJob(tsAgent, "0.0003", "0.0006", "0.0006", "0.0012", tsSpec);
   await (await escrow.connect(tsAgent).acceptJob(tsJob, { value: ethers.parseEther("0.002") })).wait();
   console.log(`   🔒 agent STAKED 0.002 zkLTC (acceptJob)`);
   const tsClaim = await submit(provider, escrow.connect(tsAgent), tsJob, tsSpec, 1, "TrendScout");
@@ -97,7 +97,7 @@ async function main() {
   console.log(`\n=== AuditBot (stake → approve + REJECT/SLASH) ===`);
   const abAgent = await mkAgent("AuditBot", "0.003");
   const abSpec = "AuditBot: review recent contract events and flag anomalies";
-  const abJob = await createJob(abAgent, "0.0004", "0.0008", "0.0016", abSpec);
+  const abJob = await createJob(abAgent, "0.0004", "0.0008", "0.0008", "0.0016", abSpec);
   await (await escrow.connect(abAgent).acceptJob(abJob, { value: ethers.parseEther("0.003") })).wait();
   console.log(`   🔒 agent STAKED 0.003 zkLTC`);
   const abGood = await submit(provider, escrow.connect(abAgent), abJob, abSpec, 1, "AuditBot");

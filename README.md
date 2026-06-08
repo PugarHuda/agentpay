@@ -52,7 +52,7 @@ The brief says *"Build with Dappit, or bring your own EVM tooling."* AgentPay do
 | RPC | `https://liteforge.rpc.caldera.xyz/http` |
 | Explorer | `https://liteforge.explorer.caldera.xyz` |
 | Faucet | `https://liteforge.hub.caldera.xyz` |
-| Contract (V3 · optimistic + stake/slash) | [`0x6ba4f758929322521075b84AE590C83b144E4F97`](https://liteforge.explorer.caldera.xyz/address/0x6ba4f758929322521075b84AE590C83b144E4F97) |
+| Contract (V3 · optimistic + stake/slash) | [`0x7ECD0AEFCF141464776C09b78735a72aE9ED748a`](https://liteforge.explorer.caldera.xyz/address/0x7ECD0AEFCF141464776C09b78735a72aE9ED748a) |
 | Contract (V2 · optimistic) | [`0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191`](https://liteforge.explorer.caldera.xyz/address/0x0B63bEdEf745545DC7847b2A07Cf5F59B2C14191) |
 | Contract (V1 · instant-pay) | [`0xDea6Da93265871d828B20cace2BADd5F5e70209d`](https://liteforge.explorer.caldera.xyz/address/0xDea6Da93265871d828B20cace2BADd5F5e70209d) |
 
@@ -84,9 +84,16 @@ acceptance (Upwork), challenge window (optimistic rollups), staked collateral
 (oracles). A neutral arbiter/oracle for the residual "who judges quality"
 question is the documented next step.
 
-**Tests:** 68 passing (V1 + V2 optimistic + V3 stake/slash incl. reentrancy and
-"garbage spam is -EV"). `node scripts/verify-concept.js` checks the economic
-invariants on-chain; `agent/agent-v2.js` is the optimistic worker.
+A second adversarial audit of V3 found that the stake floor was agent-chosen, so
+an agent could nullify slashing with a dust stake. Fixed: the client sets a
+required **`minStake` (≥ `slashPerReject` > 0)** at `createJob`, enforced in
+`acceptJob` — slashing now always has teeth. (`pendingCount` also replaced an
+O(n) task scan.)
+
+**Tests:** 71 passing (V1 + V2 optimistic + V3 stake/slash incl. reentrancy,
+"garbage spam is -EV", and the dust-stake attack). `node scripts/qa-v3.js` and
+`node scripts/verify-concept.js` check the economic invariants on-chain;
+`agent/agent-v2.js` is the optimistic worker.
 
 ## Quickstart
 

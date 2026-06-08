@@ -39,6 +39,8 @@ contract AgentEscrowV3 {
         uint256 tasksPaid;
         uint256 stake; // agent collateral, locked while working
         uint256 slashPerReject; // burned from stake on each rejected task
+        uint256 minStake; // floor the agent must stake (>= slashPerReject), set by client
+        uint256 pendingCount; // unresolved tasks (O(1) instead of scanning)
         uint64 lastSubmitAt;
         bool active;
         bool accepted; // agent has staked and accepted the job
@@ -70,6 +72,7 @@ contract AgentEscrowV3 {
         uint256 ratePerTask,
         uint256 deposit,
         uint256 slashPerReject,
+        uint256 minStake,
         string spec
     );
     event JobAccepted(uint256 indexed jobId, address indexed agent, uint256 stake);
@@ -111,6 +114,8 @@ contract AgentEscrowV3 {
     error AlreadyAccepted();
     error NoStake();
     error PendingTasks();
+    error InvalidConfig();
+    error InsufficientStake();
 
     constructor(uint64 disputeWindow_, uint64 cooldown_) {
         disputeWindow = disputeWindow_;
@@ -123,11 +128,15 @@ contract AgentEscrowV3 {
         address agent,
         uint256 ratePerTask,
         uint256 slashPerReject,
+        uint256 minStake,
         string calldata spec
     ) external payable returns (uint256 jobId) {
         if (agent == address(0)) revert ZeroAddress();
         if (ratePerTask == 0) revert ZeroRate();
         if (msg.value < ratePerTask) revert InsufficientEscrow();
+        // the deterrent must exist and the stake floor must cover at least one
+        // slash — otherwise the agent could nullify slashing with a dust stake
+        if (slashPerReject == 0 || minStake < slashPerReject) revert InvalidConfig();
 
         jobId = nextJobId++;
         Job storage job = jobs[jobId];
@@ -136,9 +145,10 @@ contract AgentEscrowV3 {
         job.ratePerTask = ratePerTask;
         job.balance = msg.value;
         job.slashPerReject = slashPerReject;
+        job.minStake = minStake;
         job.active = true;
         job.spec = spec;
-        emit JobCreated(jobId, msg.sender, agent, ratePerTask, msg.value, slashPerReject, spec);
+        emit JobCreated(jobId, msg.sender, agent, ratePerTask, msg.value, slashPerReject, minStake, spec);
     }
 
     function fund(uint256 jobId) external payable {
@@ -165,6 +175,7 @@ contract AgentEscrowV3 {
 
         t.status = Status.Rejected;
         job.reserved -= t.payout;
+        job.pendingCount -= 1;
 
         // slash & burn — neither party profits, so the client can't farm rejections
         uint256 slash = job.slashPerReject;
@@ -210,7 +221,7 @@ contract AgentEscrowV3 {
         if (!job.active) revert JobInactive();
         if (msg.sender != job.agent) revert NotAgent();
         if (job.accepted) revert AlreadyAccepted();
-        if (msg.value == 0) revert NoStake();
+        if (msg.value < job.minStake) revert InsufficientStake(); // stake floor → slashing has teeth
         job.stake = msg.value;
         job.accepted = true;
         emit JobAccepted(jobId, msg.sender, msg.value);
@@ -230,6 +241,7 @@ contract AgentEscrowV3 {
 
         job.balance -= job.ratePerTask;
         job.reserved += job.ratePerTask;
+        job.pendingCount += 1;
         job.lastSubmitAt = uint64(block.timestamp);
 
         uint64 claimableAt = uint64(block.timestamp) + disputeWindow;
@@ -262,7 +274,7 @@ contract AgentEscrowV3 {
         Job storage job = jobs[jobId];
         if (msg.sender != job.agent) revert NotAgent();
         if (job.stake == 0) revert NoStake();
-        if (_hasPending(jobId)) revert PendingTasks();
+        if (job.pendingCount != 0) revert PendingTasks();
 
         uint256 amount = job.stake;
         job.stake = 0;
@@ -317,17 +329,10 @@ contract AgentEscrowV3 {
         if (t.status != Status.Pending) revert NotPending();
     }
 
-    function _hasPending(uint256 jobId) private view returns (bool) {
-        Task[] storage arr = _tasks[jobId];
-        for (uint256 i = 0; i < arr.length; i++) {
-            if (arr[i].status == Status.Pending) return true;
-        }
-        return false;
-    }
-
     function _pay(Job storage job, uint256 jobId, uint256 taskId, Task storage t) private {
         t.status = Status.Paid;
         job.reserved -= t.payout;
+        job.pendingCount -= 1;
         job.tasksPaid += 1;
         emit TaskPaid(jobId, taskId, t.agent, t.payout, t.workHash, t.summary);
         (bool ok, ) = t.agent.call{value: t.payout}("");

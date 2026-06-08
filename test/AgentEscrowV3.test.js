@@ -7,6 +7,7 @@ describe("AgentEscrowV3 — stake & slashing", function () {
   const RATE = ethers.parseEther("0.01");
   const DEPOSIT = ethers.parseEther("0.05");
   const SLASH = ethers.parseEther("0.02"); // 2x rate — rejection costs the agent
+  const MIN_STAKE = ethers.parseEther("0.04"); // floor (>= slash) set by client
   const STAKE = ethers.parseEther("0.06");
   const WINDOW = 100;
   const BURN = "0x000000000000000000000000000000000000dEaD";
@@ -17,7 +18,7 @@ describe("AgentEscrowV3 — stake & slashing", function () {
   });
 
   async function createJob() {
-    await escrow.connect(client).createJob(agent.address, RATE, SLASH, "spec", { value: DEPOSIT });
+    await escrow.connect(client).createJob(agent.address, RATE, SLASH, MIN_STAKE, "spec", { value: DEPOSIT });
     return 0;
   }
   async function createAndAccept() {
@@ -51,11 +52,11 @@ describe("AgentEscrowV3 — stake & slashing", function () {
       ).to.be.revertedWithCustomError(escrow, "AlreadyAccepted");
     });
 
-    it("accept requires a non-zero stake", async function () {
+    it("accept requires a stake meeting the minStake floor", async function () {
       await createJob();
       await expect(escrow.connect(agent).acceptJob(0, { value: 0 })).to.be.revertedWithCustomError(
         escrow,
-        "NoStake"
+        "InsufficientStake"
       );
     });
   });
@@ -100,13 +101,47 @@ describe("AgentEscrowV3 — stake & slashing", function () {
       expect(job.tasksPaid).to.equal(1);
     });
 
-    it("slash is capped at the remaining stake", async function () {
-      const smallStake = ethers.parseEther("0.005"); // < SLASH
+    it("slash is capped at the remaining stake (after repeated rejects)", async function () {
+      // stake exactly the floor (0.04); slash 0.02 each → 2 rejects drains it,
+      // a 3rd reject caps the slash to 0 (can't go negative)
       await createJob();
-      await escrow.connect(agent).acceptJob(0, { value: smallStake });
-      await escrow.connect(agent).submitTask(0, ethers.ZeroHash, "x");
+      await escrow.connect(agent).acceptJob(0, { value: MIN_STAKE });
+      for (let i = 0; i < 3; i++) {
+        await escrow.connect(agent).submitTask(0, ethers.ZeroHash, `g${i}`);
+        await escrow.connect(client).rejectTask(0, i, "no");
+      }
+      expect((await escrow.jobs(0)).stake).to.equal(0);
+    });
+  });
+
+  describe("stake floor — slashing has teeth (audit HIGH fix)", function () {
+    it("agent cannot accept with a stake below the client's minStake", async function () {
+      await createJob();
+      await expect(
+        escrow.connect(agent).acceptJob(0, { value: SLASH - 1n }) // dust-stake attack
+      ).to.be.revertedWithCustomError(escrow, "InsufficientStake");
+      // a 1-wei stake (the old nullify-slashing attack) is now rejected
+      await expect(
+        escrow.connect(agent).acceptJob(0, { value: 1n })
+      ).to.be.revertedWithCustomError(escrow, "InsufficientStake");
+    });
+
+    it("accepting at exactly minStake works and guarantees a full first slash", async function () {
+      await createJob();
+      await escrow.connect(agent).acceptJob(0, { value: MIN_STAKE });
+      await escrow.connect(agent).submitTask(0, ethers.ZeroHash, "g");
       await escrow.connect(client).rejectTask(0, 0, "no");
-      expect((await escrow.jobs(0)).stake).to.equal(0); // can't go negative
+      // the full slash landed (stake floor >= slash), so garbage is genuinely -EV
+      expect((await escrow.jobs(0)).stake).to.equal(MIN_STAKE - SLASH);
+    });
+
+    it("rejects config with zero slash or minStake below slash", async function () {
+      await expect(
+        escrow.createJob(agent.address, RATE, 0, MIN_STAKE, "x", { value: DEPOSIT })
+      ).to.be.revertedWithCustomError(escrow, "InvalidConfig");
+      await expect(
+        escrow.createJob(agent.address, RATE, SLASH, SLASH - 1n, "x", { value: DEPOSIT })
+      ).to.be.revertedWithCustomError(escrow, "InvalidConfig");
     });
   });
 

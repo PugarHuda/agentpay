@@ -108,6 +108,7 @@ export default function App() {
             tasksPaid: Number(j.tasksPaid),
             stake: j.stake,
             slashPerReject: j.slashPerReject,
+            minStake: j.minStake,
             accepted: j.accepted,
             active: j.active,
             spec: j.spec,
@@ -314,12 +315,13 @@ export default function App() {
   }, [ensureChain]);
 
   const createJob = useCallback(
-    async ({ agent, rate, deposit, slash, spec }) => {
+    async ({ agent, rate, deposit, slash, minStake, spec }) => {
       const c = await getWriteContract();
       const tx = await c.createJob(
         agent,
         ethers.parseEther(rate),
         ethers.parseEther(slash || "0"),
+        ethers.parseEther(minStake || slash || "0"),
         spec,
         { value: ethers.parseEther(deposit) }
       );
