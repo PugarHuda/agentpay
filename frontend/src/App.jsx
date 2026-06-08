@@ -31,7 +31,7 @@ export default function App() {
       new ethers.JsonRpcProvider(CHAIN.rpc, CHAIN.id, {
         staticNetwork: true,
         polling: true,
-        pollingInterval: 4000,
+        pollingInterval: 2000, // snappier pickup of new on-chain tasks
       }),
     []
   );
@@ -51,7 +51,14 @@ export default function App() {
   const [loading, setLoading] = useState(Boolean(contract));
   const [toast, setToast] = useState(null); // { kind: "err" | "ok", text }
   const [route, setRoute] = useState(parseRoute());
+  const [, setTick] = useState(0); // 1s heartbeat → live status recompute
   const blockTimeCache = useRef(new Map());
+
+  // re-render every second so "Working/Idle" + relative times stay live
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // hash routing
   useEffect(() => {
@@ -183,9 +190,15 @@ export default function App() {
       try {
         const entry = await logToEntry(event.log, true);
         if (!entry.timestamp) entry.timestamp = Math.floor(Date.now() / 1000);
-        setFeed((prev) =>
-          prev.some((e) => e.key === entry.key) ? prev : [entry, ...prev]
-        );
+        let isNew = false;
+        setFeed((prev) => {
+          if (prev.some((e) => e.key === entry.key)) return prev;
+          isNew = true;
+          return [entry, ...prev];
+        });
+        if (isNew) {
+          notify("ok", `⚡ Agent delivered — +${fmt(entry.payout)} ${CHAIN.symbol} · ${entry.summary}`);
+        }
         refreshJobs();
         if (account) refreshBalance(account);
       } catch (e) {
@@ -337,6 +350,11 @@ export default function App() {
     }
     return m;
   }, [feed]);
+  // recomputed every render (1s tick) so the dashboard "working now" count is live
+  const nowSec = Math.floor(Date.now() / 1000);
+  const workingNow = jobs.filter(
+    (j) => j.active && lastTaskByJob[j.id] && nowSec - Number(lastTaskByJob[j.id]) < 120
+  ).length;
 
   return (
     <div className="app">
@@ -378,6 +396,15 @@ export default function App() {
       {route.name === "dashboard" && (
         <main className="container page">
           <h1 className="page-title">⚡ Dashboard</h1>
+          <div className={`livebar${workingNow > 0 ? " on" : ""}`}>
+            <span className="dot" />
+            <strong>
+              {workingNow > 0
+                ? `${workingNow} agent${workingNow > 1 ? "s" : ""} working right now`
+                : "No agents working right now"}
+            </strong>
+            <span className="livebar-sub">live · updates every second</span>
+          </div>
           <Stats
             totalPaid={fmt(totalPaid)}
             totalTasks={totalTasks}
