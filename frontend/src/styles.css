@@ -793,6 +793,70 @@ input:disabled,
 textarea:disabled {
   opacity: 0.45;
 }
+.field-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  opacity: 0.8;
+  line-height: 1.45;
+}
+.link-btn {
+  background: var(--lime);
+  border: var(--border-2);
+  box-shadow: 2px 2px 0 var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 1px 8px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.link-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.gen-box {
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+  background: var(--yellow);
+  padding: 14px;
+}
+.gen-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.gen-row strong {
+  font-family: var(--display);
+  font-size: 14px;
+}
+.gen-copy {
+  padding: 6px 12px;
+  font-size: 12px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.gen-box p {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin: 10px 0;
+  line-height: 1.5;
+}
+.gen-box code {
+  font-family: var(--mono);
+  background: var(--white);
+  border: 1.5px solid var(--ink);
+  padding: 0 5px;
+}
+.gen-key {
+  word-break: break-all;
+  background: var(--white);
+  border: var(--border-2);
+  padding: 9px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .msg {
   margin-top: 14px;
   padding: 12px 14px;

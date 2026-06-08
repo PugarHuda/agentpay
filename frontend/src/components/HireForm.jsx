@@ -11,6 +11,25 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [generated, setGenerated] = useState(null); // { address, privateKey }
+  const [copied, setCopied] = useState(false);
+
+  const genWallet = () => {
+    const w = ethers.Wallet.createRandom();
+    setAgent(w.address);
+    setGenerated({ address: w.address, privateKey: w.privateKey });
+    setCopied(false);
+  };
+
+  const copyKey = async () => {
+    try {
+      await navigator.clipboard.writeText(generated.privateKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      /* clipboard blocked — user can select manually */
+    }
+  };
 
   const validate = () => {
     if (!ethers.isAddress(agent)) return "Enter a valid agent address";
@@ -74,7 +93,36 @@ export default function HireForm({ disabled, account, onConnect, onCreate }) {
             spellCheck={false}
             disabled={disabled}
           />
+          <div className="field-hint">
+            The wallet your AI agent uses to get paid (separate from your own).
+            Don't have one?{" "}
+            <button type="button" className="link-btn" onClick={genWallet}>
+              🎲 Generate agent wallet
+            </button>
+          </div>
         </div>
+
+        {generated && (
+          <div className="gen-box">
+            <div className="gen-row">
+              <strong>🔑 Agent wallet created</strong>
+              <button
+                type="button"
+                className="btn btn-ghost gen-copy"
+                onClick={copyKey}
+              >
+                {copied ? "Copied ✓" : "Copy key"}
+              </button>
+            </div>
+            <p>
+              Save this private key — your agent program needs it as{" "}
+              <code>AGENT_PRIVATE_KEY</code>. It was generated in your browser and
+              never leaves this page. Fund it with a little {CHAIN.symbol} for gas,
+              then run <code>node agent/agent.js &lt;jobId&gt;</code>.
+            </p>
+            <div className="gen-key mono">{generated.privateKey}</div>
+          </div>
+        )}
 
         <div className="frow">
           <div className="field">
