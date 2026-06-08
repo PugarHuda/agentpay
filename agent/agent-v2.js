@@ -17,8 +17,33 @@ const fs = require("fs");
 const path = require("path");
 
 const RPC_URL = "https://liteforge.rpc.caldera.xyz/http";
+const EXPLORER_API = "https://liteforge.explorer.caldera.xyz/api/v2";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b:free";
+
+/** Pull real LiteForge ecosystem data from the Blockscout indexer (best-effort). */
+async function fetchLiteForgeStats() {
+  const out = {};
+  try {
+    const s = await (await fetch(`${EXPLORER_API}/stats`, { headers: { accept: "application/json" } })).json();
+    out.totalTxns = s.total_transactions;
+    out.totalAddresses = s.total_addresses;
+    out.totalBlocks = s.total_blocks;
+    out.txnsToday = s.transactions_today;
+    out.avgBlockTimeMs = s.average_block_time;
+    out.gasPrices = s.gas_prices; // { slow, average, fast } in gwei
+    out.networkUtilizationPct = s.network_utilization_percentage;
+  } catch { /* indexer may rate-limit; the RPC snapshot still carries the essentials */ }
+  try {
+    const b = await (await fetch(`${EXPLORER_API}/blocks?type=block`, { headers: { accept: "application/json" } })).json();
+    out.recentBlocks = (b.items || []).slice(0, 5).map((x) => ({
+      height: x.height,
+      txCount: x.transaction_count ?? x.tx_count,
+      gasUsedPct: x.gas_used_percentage,
+    }));
+  } catch { /* ignore */ }
+  return out;
+}
 
 const ABI = [
   "function jobs(uint256) view returns (address client, address agent, uint256 ratePerTask, uint256 balance, uint256 reserved, uint256 tasksPaid, uint64 lastSubmitAt, bool active, string spec)",
@@ -41,6 +66,7 @@ async function getChainSnapshot(provider) {
   const blockTime = prevBlock
     ? (block.timestamp - prevBlock.timestamp) / Math.max(lookback, 1)
     : 0;
+  const explorer = await fetchLiteForgeStats();
   return {
     chainId: Number(network.chainId),
     blockNumber: block.number,
@@ -49,6 +75,8 @@ async function getChainSnapshot(provider) {
     gasUsed: block.gasUsed.toString(),
     gasPriceGwei: ethers.formatUnits(feeData.gasPrice ?? 0n, "gwei"),
     avgBlockTimeSec: blockTime.toFixed(2),
+    // real ecosystem data from the LiteForge Blockscout indexer:
+    explorer,
   };
 }
 
