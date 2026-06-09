@@ -897,6 +897,19 @@ textarea:disabled {
   font-size: 12px;
   font-weight: 700;
 }
+.advanced-toggle {
+  align-self: flex-start;
+  background: var(--paper-2);
+  border: var(--border-2);
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.advanced-toggle:hover {
+  background: var(--yellow);
+}
 
 .msg {
   margin-top: 14px;
