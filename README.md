@@ -56,9 +56,16 @@ The brief says *"Build with Dappit, or bring your own EVM tooling."* AgentPay do
                                Live dashboard + explorer work log
 ```
 
-- `contracts/AgentEscrow.sol` — escrow, per-task payouts, on-chain proof-of-work log
-- `agent/agent.js` — the autonomous worker: reads chain → asks Claude → submits proof → gets paid
-- `scripts/` — deploy & demo job creation
+**Canonical (live):**
+- `contracts/AgentEscrowV4.sol` — optimistic escrow + stake/slash + neutral arbitration
+- `contracts/AgentRegistry.sol` — agent marketplace catalog
+- `agent/agent-v4.js` — the autonomous V4 worker: accept+stake → real LiteForge analytics → submit → optimistic claim
+- `scripts/deploy-v4.js`, `seed-v4.js`, `qa-v4.js`, `deploy-registry.js`, `seed-registry.js`
+
+**Evolution (archived in `contracts/legacy/`, `agent/legacy/`, `scripts/legacy/`):**
+V1 `AgentEscrow` (instant-pay) → V2 (optimistic) → V3 (stake/slash) → **V4 (live)**.
+Each version is a documented step in the trust-model audit below. `AgentEscrowERC20`
+(Dappit APAY token wages) is a parallel variant.
 
 ## Network
 
@@ -127,41 +134,44 @@ finalizeRejection()→ agent didn't dispute in time → rejection stands (slash)
   in `scripts/seed-v4.js`). In production the arbiter would be a decentralized
   court / oracle committee (e.g. Kleros).
 
-**Tests:** 84 passing (V1 + V2 optimistic + V3 stake/slash + V4 arbitration, incl.
-reentrancy, "garbage spam is -EV", the dust-stake attack, and "arbiter overturns
-a false rejection"). `node scripts/qa-v3.js` / `verify-concept.js` check the
+**Tests:** 94 passing (V1 + V2 optimistic + V3 stake/slash + V4 arbitration +
+AgentRegistry, incl. reentrancy, "garbage spam is -EV", the dust-stake attack, and
+"arbiter overturns a false rejection"). `node scripts/qa-v4.js` checks the V4
 economic invariants on-chain.
 
 ## Quickstart
 
 ```bash
 npm install
-npm test                                   # passing unit tests
+npm test                                   # 94 passing unit tests
 
 cp .env.example .env                       # fill in keys
-npm run deploy                             # deploy AgentEscrow to LiteForge
-npx hardhat run scripts/create-job.js --network liteforge   # hire the agent
-node agent/agent.js 0 30                   # agent works job #0 every 30s
+npx hardhat run scripts/deploy-v4.js --network liteforge   # deploy V4 escrow
+npx hardhat run scripts/seed-v4.js --network liteforge     # seed the lifecycle demo
+node agent/agent-v4.js <jobId> 30          # run an agent on a job
 ```
 
 ### How an agent works a job
 
 The contract never runs the AI — it only escrows funds and pays whoever is the
 registered `agent` for a job when they submit a proof. The work happens in
-`agent/agent.js`, a **job-aware** off-chain worker:
+`agent/agent-v4.js`, a **job-aware** off-chain worker:
 
-1. reads the job's `spec` straight from the on-chain escrow,
-2. uses that spec as its instructions and does the work via an LLM (OpenRouter),
+1. `acceptJob()` — locks the required stake (skin in the game),
+2. reads the job's `spec` from the on-chain escrow and pulls **real LiteForge
+   data** (RPC + Blockscout indexer), then does the work via an LLM (OpenRouter),
 3. hashes the output (`keccak256`) as proof-of-work,
-4. calls `completeTask(jobId, workHash, summary)` and is paid `ratePerTask` zkLTC.
+4. `submitTask(jobId, workHash, summary)` — the client approves (instant pay) or
+   rejects (→ dispute → neutral arbiter); the agent claims optimistically if the
+   client stays silent past the window.
 
 Because the instructions come from the on-chain spec, **one agent binary works
-any job** — a "DeFi Sentinel" job and a "NewsDigest" job produce different work
-from the same code. Point it at a job whose `agent` matches your wallet:
+any job** — a "PriceOracle" job and a "CopyBot" job produce different work from
+the same code. Point it at a job whose `agent` matches your wallet:
 
 ```bash
-# .env: ESCROW_ADDRESS, AGENT_PRIVATE_KEY (this job's agent), OPENROUTER_API_KEY
-node agent/agent.js <jobId> 20             # work <jobId>, one task every 20s
+# .env: ESCROW_V4_ADDRESS, AGENT_PRIVATE_KEY (this job's agent), OPENROUTER_API_KEY
+node agent/agent-v4.js <jobId> 30          # work <jobId>, one task every 30s
 ```
 
 The agent loops until the escrow runs dry (or the client closes the job), and
