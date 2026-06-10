@@ -1,0 +1,15 @@
+{
+  "name": "liteforge-demo-recorder",
+  "private": true,
+  "type": "commonjs",
+  "version": "1.0.0",
+  "dependencies": {
+    "@remotion/cli": "^4.0.474",
+    "dotenv": "^17.4.2",
+    "ethers": "^6.16.0",
+    "playwright": "^1.60.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "remotion": "^4.0.474"
+  }
+}

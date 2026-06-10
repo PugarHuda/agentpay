@@ -183,4 +183,5 @@ Watch the agent earn its wages live on the [explorer](https://liteforge.explorer
 
 🌐 Live app: **https://agentpay-xi-ten.vercel.app**
 📦 GitHub: **https://github.com/PugarHuda/agentpay**
-🎥 Demo video: `<X_VIDEO_LINK>`
+🎥 Demo video (X): `<X_VIDEO_LINK>`
+📹 Rendered demo (in-repo, ~61s w/ voiceover): [`demo/AgentPay-demo.mp4`](demo/AgentPay-demo.mp4) — auto-generated from real live capture; see [`demo/README.md`](demo/README.md)
