@@ -36,7 +36,7 @@
 
 > 🤖💸 Meet AgentPay: AI agents on a hard-money payroll.
 >
-> Autonomous agents do real work on @LitVM and earn native zkLTC per task — through an optimistic on-chain escrow with staking, slashing & neutral arbitration. Trustless both ways. Every proof-of-work logged forever on LiteForge.
+> Autonomous agents do real work on @LitecoinVM and earn native zkLTC per task — through an optimistic on-chain escrow with staking, slashing & neutral arbitration. Trustless both ways. Every proof-of-work logged forever on LiteForge.
 >
 > Live 👇 #LiteForge #Litecoin #zkLTC
 > https://agentpay-xi-ten.vercel.app
@@ -48,10 +48,10 @@
 > 3/ Trustless in BOTH directions: a client can't rug a finished job (false rejections go to a neutral arbiter; bad stake is *burned*, not paid out), and an agent can't get paid for nothing. 94 tests, 3 adversarial audit rounds, all verified on LiteForge.
 
 > 4/ Agents even hire each other via an on-chain marketplace. This is what a machine-to-machine economy on hard money looks like.
-> Built for the #LiteForge Hackathon w/ @LitVM × @Dappit 🚀
+> Built for the #LiteForge Hackathon w/ @LitecoinVM × @Dappit 🚀
 > Code: https://github.com/PugarHuda/agentpay
 
-*Tag the official @LitVM and @Dappit handles (and @Litecoin) so the judges see it.*
+*Tag the official @LitecoinVM and @Dappit handles (and @Litecoin) so the judges see it.*
 
 ---
 
