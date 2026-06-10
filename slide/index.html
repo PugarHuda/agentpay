@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<!-- AgentPay pitch deck. Present fullscreen (F11). Export to PDF: open in Chrome -> Print -> Save as PDF (Landscape). -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AgentPay — Pitch Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0b0b0b;
+    --paper:#f4efe1;
+    --paper2:#ece5d2;
+    --white:#ffffff;
+    --blue:#5b8def;   /* AgentPay accent */
+    --lime:#b9ff4d;
+    --pink:#ff90c8;
+    --yellow:#ffd93d;
+    --red:#ff5d4d;
+    --display:"Archivo Black","Arial Black",system-ui,sans-serif;
+    --sans:"Space Grotesk","Arial",system-ui,sans-serif;
+    --mono:"Space Mono",ui-monospace,Consolas,monospace;
+    --bd:5px solid var(--ink);
+    --bd3:3px solid var(--ink);
+    --sh:10px 10px 0 var(--ink);
+    --sh-sm:6px 6px 0 var(--ink);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--ink);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-weight:500;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ===== stage / 16:9 fit ===== */
+  #stage{
+    position:fixed;inset:0;
+    display:grid;place-items:center;
+    background:#1a1a1a;
+    background-image:radial-gradient(#333 1.2px,transparent 1.2px);
+    background-size:26px 26px;
+  }
+  #deck{
+    position:relative;
+    width:100vw;height:56.25vw;       /* 16:9 */
+    max-height:100vh;max-width:177.78vh;
+    background:var(--paper);
+    background-image:radial-gradient(rgba(11,11,11,.15) 1.2px,transparent 1.2px);
+    background-size:26px 26px;
+    overflow:hidden;
+    box-shadow:0 0 0 4px var(--ink), 24px 24px 0 rgba(0,0,0,.45);
+  }
+
+  .slide{
+    position:absolute;inset:0;
+    padding:5.5% 6.5%;
+    display:none;
+    flex-direction:column;
+    opacity:0;
+    transition:opacity .28s ease;
+  }
+  .slide.active{display:flex;opacity:1;animation:pop .34s ease;}
+  @keyframes pop{from{transform:translateY(14px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+  /* font sizing scales with viewport so it always fills 16:9 */
+  .slide{font-size:clamp(11px,1.45vw,26px);}
+
+  /* ===== reusable bits ===== */
+  .kicker{
+    display:inline-flex;align-items:center;gap:.5em;
+    font-family:var(--mono);font-weight:700;
+    font-size:.72em;text-transform:uppercase;letter-spacing:.12em;
+    background:var(--ink);color:var(--paper);
+    padding:.4em .8em;align-self:flex-start;
+  }
+  .tag{
+    display:inline-block;font-family:var(--mono);font-weight:700;
+    font-size:.66em;text-transform:uppercase;letter-spacing:.08em;
+    border:var(--bd3);padding:.35em .7em;background:var(--white);
+    box-shadow:4px 4px 0 var(--ink);
+  }
+  h1{font-family:var(--display);line-height:.92;letter-spacing:-.01em;}
+  h2{font-family:var(--display);line-height:.96;letter-spacing:-.01em;}
+  .lead{font-size:1.5em;font-weight:600;line-height:1.25;}
+  .mono{font-family:var(--mono);}
+  .accent{background:var(--blue);}
+  .underline{
+    background:linear-gradient(transparent 62%, var(--blue) 62%);
+    padding:0 .05em;
+  }
+  .num{
+    font-family:var(--display);font-size:.9em;
+    width:1.9em;height:1.9em;flex:0 0 auto;
+    display:grid;place-items:center;
+    background:var(--blue);border:var(--bd);box-shadow:var(--sh-sm);
+  }
+
+  .card{
+    background:var(--white);border:var(--bd);box-shadow:var(--sh);
+    padding:1.1em 1.2em;
+  }
+  .card h3{font-family:var(--display);font-size:1.05em;margin-bottom:.35em;line-height:1;}
+  .card p{font-size:.92em;line-height:1.32;}
+
+  .slide-head{display:flex;align-items:center;gap:1em;margin-bottom:.7em;}
+  .slide-head .idx{
+    font-family:var(--display);font-size:1.1em;
+    background:var(--blue);border:var(--bd);box-shadow:var(--sh-sm);
+    padding:.15em .5em;
+  }
+  .slide-title{font-family:var(--display);font-size:2.1em;line-height:.95;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.1em;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1em;}
+  .grow{flex:1;min-height:0;}
+
+  ul.brutal{list-style:none;display:flex;flex-direction:column;gap:.55em;}
+  ul.brutal li{display:flex;gap:.6em;align-items:flex-start;font-size:1.02em;line-height:1.3;}
+  ul.brutal li::before{
+    content:"";flex:0 0 auto;margin-top:.18em;
+    width:.85em;height:.85em;background:var(--blue);border:3px solid var(--ink);
+  }
+
+  /* flow diagram */
+  .flow{display:flex;align-items:stretch;gap:.5em;flex-wrap:nowrap;}
+  .step{
+    flex:1;background:var(--white);border:var(--bd3);box-shadow:4px 4px 0 var(--ink);
+    padding:.7em .65em;display:flex;flex-direction:column;gap:.25em;min-width:0;
+  }
+  .step .s-n{font-family:var(--mono);font-weight:700;font-size:.7em;background:var(--ink);color:var(--paper);align-self:flex-start;padding:.1em .45em;}
+  .step b{font-family:var(--display);font-size:.9em;line-height:1;}
+  .step span{font-size:.78em;line-height:1.22;}
+  .arrow{align-self:center;font-family:var(--display);font-size:1.4em;color:var(--ink);}
+  .branch{display:grid;grid-template-columns:repeat(3,1fr);gap:.55em;margin-top:.7em;}
+  .branch .step{flex:none;}
+  .b-good{background:var(--lime);}
+  .b-warn{background:var(--yellow);}
+  .b-bad{background:var(--pink);}
+
+  .stat{background:var(--ink);color:var(--paper);border:var(--bd);box-shadow:var(--sh);padding:1em 1.1em;display:flex;flex-direction:column;gap:.1em;}
+  .stat .big{font-family:var(--display);font-size:2.2em;line-height:1;color:var(--blue);}
+  .stat .lbl{font-family:var(--mono);font-size:.72em;text-transform:uppercase;letter-spacing:.08em;}
+
+  .addr{font-family:var(--mono);font-size:.8em;word-break:break-all;background:var(--paper2);border:var(--bd3);padding:.45em .6em;}
+  .verified{display:inline-block;font-family:var(--mono);font-weight:700;font-size:.7em;background:var(--lime);border:3px solid var(--ink);padding:.1em .45em;margin-left:.3em;}
+
+  .crit{display:grid;grid-template-columns:auto 1fr;gap:.6em 1em;align-items:center;}
+  .crit .c-k{font-family:var(--display);font-size:1em;background:var(--blue);border:var(--bd3);box-shadow:4px 4px 0 var(--ink);padding:.4em .7em;text-align:center;}
+  .crit .c-v{font-size:1.02em;line-height:1.25;}
+
+  .road{display:grid;grid-template-columns:1fr 1fr;gap:1em;}
+  .road .col h3{font-family:var(--display);font-size:1.1em;margin-bottom:.4em;}
+  .pill-row{display:flex;gap:.6em;flex-wrap:wrap;margin-top:.4em;}
+
+  /* ===== chrome: counter + progress + hint ===== */
+  #bar{position:absolute;left:0;bottom:0;height:9px;background:var(--blue);border-top:3px solid var(--ink);transition:width .3s ease;z-index:5;}
+  #counter{
+    position:absolute;right:1.4%;bottom:2.4%;z-index:6;
+    font-family:var(--mono);font-weight:700;font-size:clamp(10px,1.05vw,18px);
+    background:var(--ink);color:var(--paper);padding:.25em .6em;border:3px solid var(--blue);
+  }
+  #brandtag{
+    position:absolute;left:1.6%;bottom:2.4%;z-index:6;
+    font-family:var(--display);font-size:clamp(10px,1.05vw,18px);
+  }
+  #brandtag .dot{display:inline-block;width:.7em;height:.7em;background:var(--blue);border:2px solid var(--ink);margin-right:.35em;}
+  #hint{
+    position:absolute;left:50%;top:1.2%;transform:translateX(-50%);z-index:6;
+    font-family:var(--mono);font-size:clamp(9px,.9vw,14px);opacity:.5;
+    background:var(--paper);padding:.15em .5em;border:2px solid var(--ink);
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="deck">
+
+    <!-- 1 TITLE -->
+    <section class="slide active" data-accent="blue">
+      <div class="kicker">● AI Agents &amp; Agentic Apps Track</div>
+      <div class="grow" style="display:flex;flex-direction:column;justify-content:center;">
+        <div class="tag" style="background:var(--blue);">AGENTPAY</div>
+        <h1 style="font-size:7.2em;margin:.12em 0 .12em;">Agent<span style="color:var(--blue);-webkit-text-stroke:3px var(--ink);">Pay</span></h1>
+        <p class="lead" style="font-size:2em;max-width:18em;">AI agents on a <span class="underline">hard-money payroll.</span></p>
+      </div>
+      <div style="display:flex;gap:1em;align-items:center;flex-wrap:wrap;">
+        <span class="tag" style="background:var(--lime);">LIVE ON LITVM LITEFORGE · CHAIN 4441</span>
+        <span class="mono" style="font-weight:700;font-size:1.1em;">agentpay-xi-ten.vercel.app</span>
+      </div>
+    </section>
+
+    <!-- 2 PROBLEM -->
+    <section class="slide" data-accent="pink">
+      <div class="slide-head"><span class="idx">01</span><span class="slide-title">The Problem</span></div>
+      <p class="lead" style="margin-bottom:.7em;">Autonomous AI agents are about to transact at scale — but they have no native way to <span class="underline">earn and be paid trustlessly.</span></p>
+      <div class="grid2 grow" style="align-content:center;">
+        <div class="card" style="box-shadow:10px 10px 0 var(--ink);background:var(--pink);">
+          <h3>Invoicing assumes humans + blind trust</h3>
+          <p>Today's payment rails are built for people, not software. There's no protocol for a machine to bill, prove work, and settle.</p>
+        </div>
+        <div class="card">
+          <h3>Trust breaks both ways</h3>
+          <p>An agent can finish real work and be <b>stiffed</b>. A client can pay good money and receive <b>garbage</b>. Nobody is protected.</p>
+        </div>
+      </div>
+      <p class="lead" style="font-size:1.2em;margin-top:.6em;">The machine economy needs settlement that doesn't trust either party.</p>
+    </section>
+
+    <!-- 3 SOLUTION -->
+    <section class="slide" data-accent="blue">
+      <div class="slide-head"><span class="idx">02</span><span class="slide-title">The Solution</span></div>
+      <p class="lead" style="margin-bottom:.6em;">An <span class="underline">optimistic on-chain escrow</span> on LiteForge. Agents do real work and are paid native <b>zkLTC</b> per task.</p>
+      <ul class="brutal grow" style="justify-content:center;">
+        <li><b>Trustless both ways.</b>&nbsp;Staking + slashing + neutral arbitration protect client <i>and</i> agent.</li>
+        <li><b>Proof-of-work on-chain.</b>&nbsp;Every task posts a <span class="mono">keccak256</span> hash of the delivered work.</li>
+        <li><b>Optimistic settlement.</b>&nbsp;Silent client? Agent claims after a challenge window. No friction for honest deals.</li>
+        <li><b>Agents hire agents.</b>&nbsp;An on-chain marketplace where an agent can post a job and another fulfils it.</li>
+      </ul>
+    </section>
+
+    <!-- 4 HOW IT WORKS -->
+    <section class="slide" data-accent="blue">
+      <div class="slide-head"><span class="idx">03</span><span class="slide-title">How It Works</span></div>
+      <div class="flow">
+        <div class="step"><span class="s-n">1</span><b>createJob</b><span>Client escrows zkLTC &amp; names a neutral arbiter.</span></div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="s-n">2</span><b>acceptJob</b><span>Agent accepts &amp; stakes collateral.</span></div>
+        <div class="arrow">→</div>
+        <div class="step" style="background:var(--blue);"><span class="s-n">3</span><b>do real work</b><span>Pull live LiteForge data (Blockscout: tx volume, gas tiers, utilization); LLM writes a genuine report.</span></div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="s-n">4</span><b>submitTask</b><span>Work hash posted on-chain.</span></div>
+      </div>
+      <div class="branch">
+        <div class="step b-good"><span class="s-n">A · happy</span><b>approveTask</b><span>Client approves → instant pay. Or agent optimistically claims after the challenge window if the client is silent.</span></div>
+        <div class="step b-warn"><span class="s-n">B · dispute</span><b>rejectTask → disputeRejection → resolveDispute</b><span>Reject only <i>proposes</i>. Agent disputes; the neutral arbiter rules. Slash is <b>BURNED</b>, never paid to client → no false-rejection farming.</span></div>
+        <div class="step b-bad"><span class="s-n">C · liveness</span><b>forceResolveStuck</b><span>If the arbiter goes inactive, anyone can force resolution. Funds never get stuck.</span></div>
+      </div>
+    </section>
+
+    <!-- 5 LIVE & ON-CHAIN -->
+    <section class="slide" data-accent="lime">
+      <div class="slide-head"><span class="idx">04</span><span class="slide-title">Live &amp; On-Chain</span></div>
+      <div class="grid2 grow">
+        <div style="display:flex;flex-direction:column;gap:.8em;justify-content:center;">
+          <div>
+            <div class="mono" style="font-weight:700;font-size:.8em;text-transform:uppercase;letter-spacing:.1em;">Live dApp</div>
+            <div class="lead" style="font-size:1.35em;">agentpay-xi-ten.vercel.app</div>
+          </div>
+          <div class="tag" style="background:var(--lime);font-size:.9em;">● REAL DATA — NO MOCKS</div>
+          <p style="font-size:1em;line-height:1.35;">Agents read <b>live LiteForge chain data</b> from Blockscout and settle in <b>native zkLTC</b>. Everything you see is on Chain 4441.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.8em;justify-content:center;">
+          <div>
+            <div class="mono" style="font-weight:700;font-size:.8em;">AgentEscrowV4 <span class="verified">VERIFIED</span></div>
+            <div class="addr">0x95D0e3c0250d9B4839bB3F7881740b7e6bb0f50D</div>
+          </div>
+          <div>
+            <div class="mono" style="font-weight:700;font-size:.8em;">AgentRegistry <span class="verified">VERIFIED</span></div>
+            <div class="addr">0x2aE3A667Aa70D23a365eB8310656d06B7c30183E</div>
+          </div>
+          <div class="tag">CHAIN 4441 · LITVM LITEFORGE</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 UNDER THE HOOD -->
+    <section class="slide" data-accent="blue">
+      <div class="slide-head"><span class="idx">05</span><span class="slide-title">Under the Hood</span></div>
+      <div class="grid3" style="margin-bottom:1em;">
+        <div class="stat"><span class="big">94</span><span class="lbl">passing tests</span></div>
+        <div class="stat"><span class="big">3</span><span class="lbl">adversarial audit rounds</span></div>
+        <div class="stat"><span class="big">2</span><span class="lbl">verified contracts</span></div>
+      </div>
+      <div class="grid2 grow">
+        <div class="card">
+          <h3>Tech stack</h3>
+          <p>Solidity 0.8.24 (custom errors, <span class="mono">viaIR</span>) · neobrutalism React frontend · WebSocket real-time UI · OpenRouter LLM worker doing the actual report writing.</p>
+        </div>
+        <div class="card" style="background:var(--blue);">
+          <h3>Security story</h3>
+          <p>Hardened across <b>3 adversarial audit rounds</b>: stake/slash math, dispute griefing, optimistic-claim timing, and arbiter-liveness all stress-tested. Slashed stake is burned, removing the incentive to false-reject.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 HARD MONEY FIT -->
+    <section class="slide" data-accent="blue">
+      <div class="slide-head"><span class="idx">06</span><span class="slide-title">Why It's Hard Money Web3</span></div>
+      <div class="grow" style="display:flex;flex-direction:column;justify-content:center;gap:1em;">
+        <p class="lead">Every wage is native <span class="underline">zkLTC</span> — LTC-backed hard money on Litecoin's EVM.</p>
+        <div class="grid2">
+          <div class="card"><h3>New utility for LTC</h3><p>AgentPay turns Litecoin's hard money into the settlement layer for autonomous software — a brand-new source of demand.</p></div>
+          <div class="card" style="background:var(--blue);"><h3>A machine-to-machine economy</h3><p>Agents earn, stake, and even hire each other — all denominated in hard money. Real M2M commerce, not a faucet demo.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 JUDGING -->
+    <section class="slide" data-accent="yellow">
+      <div class="slide-head"><span class="idx">07</span><span class="slide-title">Judging Criteria</span></div>
+      <div class="crit grow" style="align-content:center;">
+        <div class="c-k">Innovation</div>
+        <div class="c-v">First agent-wage escrow on Litecoin EVM — and agents can hire each other on-chain.</div>
+        <div class="c-k">Hard Money</div>
+        <div class="c-v">Wages paid in zkLTC: new LTC utility plus an entirely new AI economy.</div>
+        <div class="c-k">Technical</div>
+        <div class="c-v">Optimistic escrow + stake/slash + arbitration + liveness, on-chain proof-of-work, 94 tests, real chain data.</div>
+        <div class="c-k">UX</div>
+        <div class="c-v">One-click chain switch, works read-only, in-browser wallet gen, live work feed.</div>
+      </div>
+    </section>
+
+    <!-- 9 NOW + ROADMAP -->
+    <section class="slide" data-accent="lime">
+      <div class="slide-head"><span class="idx">08</span><span class="slide-title">Live Now + Roadmap</span></div>
+      <div class="road grow" style="align-content:center;">
+        <div class="col card" style="background:var(--lime);">
+          <h3>● Live now</h3>
+          <ul class="brutal" style="font-size:.92em;">
+            <li>End-to-end escrow on Chain 4441 (2 verified contracts)</li>
+            <li>LLM agent pulling real Blockscout data &amp; getting paid</li>
+            <li>Stake / slash / dispute / arbitration + forceResolveStuck</li>
+            <li>Agent-to-agent marketplace &amp; live work feed</li>
+          </ul>
+        </div>
+        <div class="col card">
+          <h3>→ Roadmap</h3>
+          <ul class="brutal" style="font-size:.92em;">
+            <li>Reputation scoring weighted by on-chain history</li>
+            <li>Multi-arbiter / decentralized juries</li>
+            <li>Recurring + streaming agent payrolls</li>
+            <li>SDK so any agent framework can plug in</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 CLOSE -->
+    <section class="slide" data-accent="blue">
+      <div class="grow" style="display:flex;flex-direction:column;justify-content:center;">
+        <div class="tag" style="background:var(--blue);align-self:flex-start;">AGENTPAY</div>
+        <h2 style="font-size:5em;margin:.1em 0;">AI agents on a<br/>hard-money payroll.</h2>
+        <div style="display:flex;flex-direction:column;gap:.3em;margin-top:.6em;font-family:var(--mono);font-weight:700;font-size:1.15em;">
+          <div><span class="verified">LIVE</span>&nbsp; agentpay-xi-ten.vercel.app</div>
+          <div><span class="tag" style="font-size:.85em;">GITHUB</span>&nbsp; github.com/PugarHuda/agentpay</div>
+        </div>
+      </div>
+      <div class="tag" style="background:var(--lime);align-self:flex-start;">BUILT FOR THE LITEFORGE HACKATHON 2026</div>
+    </section>
+
+    <div id="hint">← →  ·  Space  ·  click sides</div>
+    <div id="brandtag"><span class="dot"></span>AGENTPAY</div>
+    <div id="counter">1 / 10</div>
+    <div id="bar"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var bar = document.getElementById('bar');
+  var counter = document.getElementById('counter');
+  var i = 0;
+  // map data-accent to a CSS color var so the progress bar / counter could vary (kept blue for AgentPay brand)
+  function show(n){
+    if(n<0) n=0;
+    if(n>slides.length-1) n=slides.length-1;
+    slides[i].classList.remove('active');
+    i = n;
+    slides[i].classList.add('active');
+    counter.textContent = (i+1)+' / '+slides.length;
+    bar.style.width = (((i+1)/slides.length)*100)+'%';
+  }
+  function next(){ show(i+1); }
+  function prev(){ show(i-1); }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); next(); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); prev(); }
+    else if(e.key==='Home'){ e.preventDefault(); show(0); }
+    else if(e.key==='End'){ e.preventDefault(); show(slides.length-1); }
+  });
+
+  document.getElementById('deck').addEventListener('click', function(e){
+    // ignore clicks on links
+    if(e.target.closest('a')) return;
+    var rect = this.getBoundingClientRect();
+    if((e.clientX - rect.left) < rect.width*0.5){ prev(); } else { next(); }
+  });
+
+  show(0);
+})();
+</script>
+</body>
+</html>

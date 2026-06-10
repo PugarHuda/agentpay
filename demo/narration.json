@@ -2,13 +2,15 @@
   "grailwatch": [
     { "id": "1-landing",  "text": "Hard money is only hard if it's verifiable. GrailWatch is the proof of reserves layer for zk L T C, live on Lit V M LiteForge." },
     { "id": "2-reserves", "text": "Right now zk L T C is fully backed, at over eleven hundred percent. And this isn't one company's word for it. It's the median across four independent attestors, each posting on chain." },
-    { "id": "3-live",     "text": "Every reading is a real transaction on LiteForge. Watch. A new attestation lands live, pulling the real Litecoin reserve and the real zk L T C supply. No single attestor can move the median, so no one can fake it." },
-    { "id": "4-history",  "text": "Every attestation is permanent and public. Timestamped, attributed, and independently verifiable by anyone. Proof of reserves, brought to the bridge that Lit V M is built on. GrailWatch." }
+    { "id": "3-verify",   "text": "And you don't have to take our word for any of it. One click opens the real Litecoin address on a public explorer. The exact reserve, over three million Litecoin, verifiable by anyone, anytime." },
+    { "id": "4-live",     "text": "Every reading is a real transaction on LiteForge. Watch. A new attestation lands live, pulling the real Litecoin reserve and the real zk L T C supply. No single attestor can move the median, so no one can fake it." },
+    { "id": "5-history",  "text": "Every attestation is permanent and public. Timestamped, attributed, and independently verifiable. Proof of reserves, brought to the bridge that Lit V M is built on. GrailWatch." }
   ],
   "agentpay": [
     { "id": "1-landing",  "text": "Artificial intelligence agents are about to run the economy. What money will they use? Hard money. This is AgentPay, on Lit V M LiteForge." },
     { "id": "2-hire",     "text": "A client hires an agent from an on chain marketplace and escrows zk L T C. The agent accepts the job and stakes its own collateral, so it has skin in the game." },
     { "id": "3-work",     "text": "The agent does real work. It reads live LiteForge chain data, writes a genuine report, and posts a cryptographic proof of that work on chain. When it's approved, it gets paid, instantly, in hard money." },
-    { "id": "4-trust",    "text": "And it's trustless both ways. A client can't refuse to pay for finished work. Disputes go to a neutral arbiter, and bad actors get slashed. AI agents, earning a living on Litecoin. AgentPay." }
+    { "id": "4-trust",    "text": "And it's trustless both ways. A client can't refuse to pay for finished work. Disputes go to a neutral arbiter, and bad actors get slashed." },
+    { "id": "5-verify",   "text": "And none of this is a mockup. Every job, stake, and payment is a real transaction on LiteForge. Here's the escrow contract, verified, with its full on chain history. AgentPay. A I agents earning hard money." }
   ]
 }
