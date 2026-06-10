@@ -1,16 +1,28 @@
 {
-  "grailwatch": [
-    { "id": "1-landing",  "text": "Hard money is only hard if it's verifiable. GrailWatch is the proof of reserves layer for zk L T C, live on Lit V M LiteForge." },
-    { "id": "2-reserves", "text": "Right now zk L T C is fully backed, at over eleven hundred percent. And this isn't one company's word for it. It's the median across four independent attestors, each posting on chain." },
-    { "id": "3-verify",   "text": "And you don't have to take our word for any of it. One click opens the real Litecoin address on a public explorer. The exact reserve, over three million Litecoin, verifiable by anyone, anytime." },
-    { "id": "4-live",     "text": "Every reading is a real transaction on LiteForge. Watch. A new attestation lands live, pulling the real Litecoin reserve and the real zk L T C supply. No single attestor can move the median, so no one can fake it." },
-    { "id": "5-history",  "text": "Every attestation is permanent and public. Timestamped, attributed, and independently verifiable. Proof of reserves, brought to the bridge that Lit V M is built on. GrailWatch." }
-  ],
-  "agentpay": [
-    { "id": "1-landing",  "text": "Artificial intelligence agents are about to run the economy. What money will they use? Hard money. This is AgentPay, on Lit V M LiteForge." },
-    { "id": "2-hire",     "text": "A client hires an agent from an on chain marketplace and escrows zk L T C. The agent accepts the job and stakes its own collateral, so it has skin in the game." },
-    { "id": "3-work",     "text": "The agent does real work. It reads live LiteForge chain data, writes a genuine report, and posts a cryptographic proof of that work on chain. When it's approved, it gets paid, instantly, in hard money." },
-    { "id": "4-trust",    "text": "And it's trustless both ways. A client can't refuse to pay for finished work. Disputes go to a neutral arbiter, and bad actors get slashed." },
-    { "id": "5-verify",   "text": "And none of this is a mockup. Every job, stake, and payment is a real transaction on LiteForge. Here's the escrow contract, verified, with its full on chain history. AgentPay. A I agents earning hard money." }
-  ]
+  "grailwatch": {
+    "voice": "en-US-AriaNeural",
+    "scenes": [
+      { "id": "s1", "visual": { "type": "slide", "n": 1 }, "text": "Hard money is only hard if it's verifiable. This is GrailWatch — proof of reserves for zk L T C, on Lit V M LiteForge." },
+      { "id": "s2", "visual": { "type": "slide", "n": 2 }, "text": "LitVM's entire thesis rests on one invariant: one zk L T C equals one Litecoin. Today, that's a trust-me claim. And after 2022, proof of reserves became table stakes." },
+      { "id": "s3", "visual": { "type": "slide", "n": 3 }, "text": "GrailWatch fixes that. A quorum of independent attestors posts the backing ratio on chain, and the health is the median of their fresh readings — so no single attestor can fake it." },
+      { "id": "c-reserves", "visual": { "type": "clip", "id": "2-reserves" }, "text": "Here it is, live. zk L T C is fully backed, at over eleven hundred percent — the median across four independent attestors.", "caption": "Live: fully backed · median across 4 attestors" },
+      { "id": "c-verify", "visual": { "type": "clip", "id": "3-verify" }, "text": "And you don't have to trust us. One click opens the real Litecoin address on a public explorer: over three million Litecoin, verifiable by anyone.", "caption": "Verify it yourself — 3.15M real LTC on litecoinspace" },
+      { "id": "c-live", "visual": { "type": "clip", "id": "4-live" }, "text": "Every reading is a real transaction on LiteForge. Watch — a new attestation lands live, and no single attestor can move the median.", "caption": "A real attestation lands live on-chain" },
+      { "id": "c-history", "visual": { "type": "clip", "id": "5-history" }, "text": "Every attestation is permanent and public. Timestamped, attributed, independently verifiable.", "caption": "Permanent, public, append-only audit trail" },
+      { "id": "s10", "visual": { "type": "slide", "n": 10 }, "text": "Proof of reserves, brought to the bridge that Lit V M is built on. GrailWatch." }
+    ]
+  },
+  "agentpay": {
+    "voice": "en-US-GuyNeural",
+    "scenes": [
+      { "id": "s1", "visual": { "type": "slide", "n": 1 }, "text": "Artificial intelligence agents are about to run the economy. What money will they use? Hard money. This is AgentPay, on Lit V M LiteForge." },
+      { "id": "s2", "visual": { "type": "slide", "n": 2 }, "text": "Autonomous agents will transact at scale, but there's no native way for them to earn and be paid, trustlessly. An agent can be stiffed for finished work, or paid for garbage." },
+      { "id": "s3", "visual": { "type": "slide", "n": 3 }, "text": "AgentPay is an optimistic, on chain escrow. Agents do real work and are paid native zk L T C per task — with staking, slashing, and neutral arbitration making it trustless both ways." },
+      { "id": "c-hire", "visual": { "type": "clip", "id": "2-hire" }, "text": "A client hires an agent from an on chain marketplace and escrows zk L T C. The agent accepts the job and stakes its own collateral.", "caption": "Hire an agent · escrow zkLTC · agent stakes collateral" },
+      { "id": "c-work", "visual": { "type": "clip", "id": "3-work" }, "text": "The agent does real work — reading live LiteForge data, writing a report, and posting a proof of work on chain — and gets paid, instantly.", "caption": "Real work → on-chain proof → instant payment" },
+      { "id": "c-trust", "visual": { "type": "clip", "id": "4-trust" }, "text": "And it's trustless both ways. A client can't refuse to pay for finished work — disputes go to a neutral arbiter, and bad actors get slashed.", "caption": "Disputes → neutral arbiter · bad actors slashed" },
+      { "id": "c-verify", "visual": { "type": "clip", "id": "5-verify" }, "text": "And none of this is a mockup. Here's the verified escrow contract and its real transaction history on the LiteForge explorer.", "caption": "Verified on-chain: AgentEscrowV4 + real tx history" },
+      { "id": "s10", "visual": { "type": "slide", "n": 10 }, "text": "Artificial intelligence agents, earning a living on hard money. AgentPay." }
+    ]
+  }
 }

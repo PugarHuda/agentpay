@@ -1,66 +1,69 @@
 /**
- * Reads every voiceover .wav duration and the matching clip, and writes
- * out/scenes.<project>.json — the timeline the Remotion composition renders.
- * Duration is parsed straight from the WAV header (dataChunkBytes / byteRate).
+ * Builds the combined-video timeline per project: each scene's visual is either
+ * a pitch-deck slide image or a live-demo clip; narration is natural neural TTS.
+ * Reads each mp3's real duration, copies assets into public/, and writes
+ * remotion/scenes.<project>.json.
  */
 const fs = require("fs");
 const path = require("path");
+const mm = require("music-metadata");
 
 const FPS = 30;
-const PAD_TAIL = 0.6; // seconds of breathing room after each line
-
-function wavDurationSeconds(file) {
-  const buf = fs.readFileSync(file);
-  // walk RIFF chunks to find "fmt " (byteRate) and "data" (size)
-  let byteRate = 0, dataSize = 0, off = 12;
-  while (off + 8 <= buf.length) {
-    const id = buf.toString("ascii", off, off + 4);
-    const size = buf.readUInt32LE(off + 4);
-    if (id === "fmt ") byteRate = buf.readUInt32LE(off + 16);
-    if (id === "data") { dataSize = size; break; }
-    off += 8 + size + (size % 2);
-  }
-  if (!byteRate) throw new Error(`no fmt chunk in ${file}`);
-  return dataSize / byteRate;
-}
-
+const PAD_TAIL = 0.7; // seconds of breathing room after each line
 const PUBLIC = path.join(__dirname, "public");
+const narration = require("./narration.json");
+
 function copyInto(src, relDest) {
   const dest = path.join(PUBLIC, relDest);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.copyFileSync(src, dest);
-  return relDest.replace(/\\/g, "/"); // staticFile path
+  return relDest.replace(/\\/g, "/");
 }
 
-function build(project) {
+async function build(project) {
+  const { scenes } = narration[project];
   const voDir = path.join(__dirname, "out", "vo", project);
+  const slideDir = path.join(__dirname, "out", "slides", project);
   const clipDir = path.join(__dirname, "out", project === "grailwatch" ? "gw" : "ap");
-  const narration = require("./narration.json")[project];
-  const scenes = narration.map((s) => {
-    const wav = path.join(voDir, `${s.id}.wav`);
-    const clip = path.join(clipDir, `${s.id}.webm`);
-    const audioSec = wavDurationSeconds(wav);
-    const durSec = audioSec + PAD_TAIL;
-    const audioRel = copyInto(wav, path.join("audio", project, `${s.id}.wav`));
-    const clipRel = fs.existsSync(clip) ? copyInto(clip, path.join("clips", project, `${s.id}.webm`)) : null;
-    return {
+
+  const out = [];
+  for (const s of scenes) {
+    const mp3 = path.join(voDir, `${s.id}.mp3`);
+    const audioSec = (await mm.parseFile(mp3)).format.duration;
+    const audioRel = copyInto(mp3, path.join("audio", project, `${s.id}.mp3`));
+
+    let visualType, visualSrc;
+    if (s.visual.type === "slide") {
+      visualType = "slide";
+      const png = path.join(slideDir, `slide-${s.visual.n}.png`);
+      visualSrc = copyInto(png, path.join("slides", project, `slide-${s.visual.n}.png`));
+    } else {
+      visualType = "clip";
+      const webm = path.join(clipDir, `${s.visual.id}.webm`);
+      visualSrc = copyInto(webm, path.join("clips", project, `${s.visual.id}.webm`));
+    }
+
+    out.push({
       id: s.id,
-      caption: s.text,
+      visualType,
+      visualSrc,
+      caption: s.caption || null,
       audio: audioRel,
-      clip: clipRel,
       audioSec: +audioSec.toFixed(2),
-      durationInFrames: Math.round(durSec * FPS),
-      hasClip: !!clipRel,
-    };
-  });
-  const total = scenes.reduce((a, s) => a + s.durationInFrames, 0);
-  const out = { project, fps: FPS, width: 1280, height: 720, scenes, totalFrames: total };
+      durationInFrames: Math.round((audioSec + PAD_TAIL) * FPS),
+    });
+  }
+
+  const total = out.reduce((a, s) => a + s.durationInFrames, 0);
+  const data = { project, fps: FPS, width: 1280, height: 720, scenes: out, totalFrames: total };
   const dest = path.join(__dirname, "remotion", `scenes.${project}.json`);
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.writeFileSync(dest, JSON.stringify(out, null, 2));
-  console.log(`${project}: ${scenes.length} scenes, ${(total / FPS).toFixed(1)}s total → ${dest}`);
-  scenes.forEach((s) => console.log(`   ${s.id}: ${s.audioSec}s audio, clip=${s.hasClip}`));
+  fs.writeFileSync(dest, JSON.stringify(data, null, 2));
+  console.log(`${project}: ${out.length} scenes, ${(total / FPS).toFixed(1)}s total`);
+  out.forEach((s) => console.log(`   ${s.id} [${s.visualType}]: ${s.audioSec}s`));
 }
 
-build("grailwatch");
-build("agentpay");
+(async () => {
+  await build("grailwatch");
+  await build("agentpay");
+})().catch((e) => { console.error(e); process.exit(1); });

@@ -1,33 +1,44 @@
-# Demo video pipeline
+# Demo video + pitch deck pipeline
 
-Auto-generates the demo video from **real** screen-capture of the live app on
-LiteForge + a voiceover + captions — no paid APIs, all local.
+Auto-generates **one combined video per project** — the pitch deck (narrated
+slides) flowing straight into the live, interactive on-chain demo — plus a PDF
+of the deck. Natural neural voiceover, no paid APIs.
 
-`<Project>-demo.mp4` in this folder is the rendered result (~61s, 720p, voiceover).
+Deliverables (rendered into each repo): `demo/<Project>-demo.mp4` (~85s, 720p,
+voiceover) and `slide/<Project>-pitch-deck.pdf`.
 
 ## How it's made
 
-1. **Capture** — Playwright records real B-roll of the live dashboard, one clip
-   per scene. The GrailWatch "live" scene fires a *real on-chain attestation*
-   mid-record so the dashboard updates on camera.
+1. **Live capture** — Playwright drives the live app with a *visible cursor*
+   (clicks through nav tabs, a verification shot opening litecoinspace / the
+   LiteForge explorer); GrailWatch fires a real on-chain attestation mid-record.
    ```
    node record-grailwatch.js     # → out/gw/*.webm
    node record-agentpay.js       # → out/ap/*.webm
    ```
-2. **Voiceover** — Windows SAPI (offline TTS) renders narration from
-   `narration.json`:
+2. **Deck slides** — screenshot every pitch-deck slide:
    ```
-   powershell -File tts.ps1 -Project grailwatch
-   powershell -File tts.ps1 -Project agentpay
+   node capture-deck.js          # → out/slides/<project>/slide-N.png
    ```
-3. **Timeline** — copies assets into `public/` and computes per-scene durations:
+3. **Natural voiceover** — Microsoft Edge neural TTS (free, no key), one mp3 per
+   scene from `narration.json` (GrailWatch = Aria, AgentPay = Guy):
    ```
-   node build-scenes.js          # → remotion/scenes.<project>.json
+   node tts-edge.js              # → out/vo/<project>/*.mp3
    ```
-4. **Render** — Remotion composes chrome + clip + caption + voiceover → mp4:
+4. **Timeline** — read mp3 durations, copy assets to `public/`, write
+   `remotion/scenes.<project>.json` (each scene = a deck slide OR a live clip):
    ```
-   npx remotion render remotion/index.jsx GrailWatch GrailWatch-demo.mp4
-   npx remotion render remotion/index.jsx AgentPay  AgentPay-demo.mp4
+   node build-scenes.js
+   ```
+5. **Render** — Remotion composes slides full-bleed + live clips in neobrutalism
+   chrome with captions:
+   ```
+   npx remotion render remotion/index.jsx GrailWatch out/GrailWatch-demo.mp4
+   npx remotion render remotion/index.jsx AgentPay  out/AgentPay-demo.mp4
+   ```
+6. **PDF deck** — assemble the slide PNGs into a 16:9 PDF:
+   ```
+   node pdf-deck.js              # → out/<Project>-pitch-deck.pdf
    ```
 
 ## Setup
@@ -35,7 +46,6 @@ LiteForge + a voiceover + captions — no paid APIs, all local.
 npm install
 node node_modules/esbuild/install.js   # if esbuild's postinstall was skipped
 ```
-
-To change the script, edit `narration.json` and re-run steps 2–4.
+Edit `narration.json` to change the script, then re-run steps 3–5.
 Generated artifacts (`out/`, `public/`, `node_modules/`, scene JSON) are gitignored;
-the committed `.mp4` is the deliverable.
+the committed `.mp4` and `.pdf` are the deliverables.
